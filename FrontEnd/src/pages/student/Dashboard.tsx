@@ -6,30 +6,72 @@ import { Loader } from "@/components/common/Loader";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  mockStudentDashboard,
-  mockStudentAnnouncements,
-  mockStudentSchedule,
-} from "@/api/mockData";
-import type { StudentDashboard, Announcement, Schedule } from "@/types";
+import { API_ENDPOINTS, get } from "@/api/config";
+import type { StudentDashboard, Announcement, Schedule, StudentProfile } from "@/types";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--destructive))"];
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true);
+  const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
   const [dashboard, setDashboard] = useState<StudentDashboard | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [upcomingSchedule, setUpcomingSchedule] = useState<Schedule[]>([]);
 
   useEffect(() => {
-    // Simulate API calls
-    setTimeout(() => {
-      setDashboard(mockStudentDashboard);
-      setAnnouncements(mockStudentAnnouncements.slice(0, 3));
-      setUpcomingSchedule(mockStudentSchedule.slice(0, 3));
-      setLoading(false);
-    }, 800);
+    const fetchData = async () => {
+      try {
+        // Fetch student profile - assuming user ID is available from auth context
+        const profileRes = await get(`${API_ENDPOINTS.STUDENT.STUDENT_PROFILES}1/`); // Replace with actual user ID
+        setStudentProfile(profileRes);
+
+        // For now, use mock data until dashboard API is implemented
+        const mockDashboard: StudentDashboard = {
+          attendanceRate: 87,
+          gpa: 3.2,
+          registeredCourses: 5,
+          unreadAnnouncements: 3,
+          performanceData: [
+            { semester: "Fall 2023", gpa: 3.0 },
+            { semester: "Spring 2024", gpa: 3.1 },
+            { semester: "Fall 2024", gpa: 3.2 },
+          ],
+          attendanceData: [
+            { name: "Present", value: 87 },
+            { name: "Absent", value: 13 },
+          ],
+        };
+        setDashboard(mockDashboard);
+        setAnnouncements([]); // Replace with actual API call when available
+        setUpcomingSchedule([]); // Replace with actual API call when available
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        // Fallback to mock data
+        const mockDashboard: StudentDashboard = {
+          attendanceRate: 87,
+          gpa: 3.2,
+          registeredCourses: 5,
+          unreadAnnouncements: 3,
+          performanceData: [
+            { semester: "Fall 2023", gpa: 3.0 },
+            { semester: "Spring 2024", gpa: 3.1 },
+            { semester: "Fall 2024", gpa: 3.2 },
+          ],
+          attendanceData: [
+            { name: "Present", value: 87 },
+            { name: "Absent", value: 13 },
+          ],
+        };
+        setDashboard(mockDashboard);
+        setAnnouncements([]);
+        setUpcomingSchedule([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   if (loading || !dashboard) {
@@ -149,9 +191,9 @@ export default function Dashboard() {
                     <Calendar className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium">{schedule.course.title}</p>
+                    <p className="font-medium">Subject ID: {schedule.subject}</p>
                     <p className="text-sm text-muted-foreground">
-                      {schedule.dayOfWeek} • {schedule.startTime} - {schedule.endTime}
+                      {new Date(schedule.date).toLocaleDateString()} • {schedule.start_time} - {schedule.end_time}
                     </p>
                     <p className="text-sm text-muted-foreground">Room: {schedule.room}</p>
                   </div>

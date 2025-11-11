@@ -12,59 +12,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { mockUsers } from "@/api/mockData";
-import type { User as UserType } from "@/types";
+import { API_ENDPOINTS, get } from "@/api/config";
+import type { User as UserType, TeacherProfile } from "@/types";
 
-type LecturerProfile = {
-  id: string;
-  user: UserType;
-  employeeId: string;
-  department: string;
-  position: string;
-  specialization: string;
-  qualifications: string[];
-  experience: number;
-  joinDate: string;
-  officeLocation: string;
-  officeHours: string;
-  researchInterests: string[];
-  publications: number;
-  languages: string[];
-};
+type LecturerProfile = TeacherProfile;
 
 export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isPasswordDialogOpen, setIsPasswordDialogOpen] = useState(false);
-  const [profile, setProfile] = useState<LecturerProfile | null>(null);
+  const [profile, setProfile] = useState<TeacherProfile | null>(null);
 
-  // Mock lecturer profile data
-  const mockProfile: LecturerProfile = {
-    id: "lecturer_1",
-    user: mockUsers[1], // Dara Sok
-    employeeId: "LEC2024001",
-    department: "Computer Science",
-    position: "Senior Lecturer",
-    specialization: "Software Engineering & Data Science",
-    qualifications: ["PhD in Computer Science", "MSc in Software Engineering", "BSc in Computer Science"],
-    experience: 8,
-    joinDate: "2017-08-15",
-    officeLocation: "Building A, Room 301",
-    officeHours: "Mon-Fri: 9:00 AM - 5:00 PM",
-    researchInterests: ["Machine Learning", "Software Architecture", "Data Analytics"],
-    publications: 15,
-    languages: ["Khmer", "English", "French"],
+  // Mock lecturer profile data based on TeacherProfile model
+  const mockProfile: TeacherProfile = {
+    id: 1,
+    user: 1,
+    full_name: "Dara Sok",
+    gender: "male",
+    date_of_birth: "1985-05-15",
+    nationality: "Cambodian",
+    place_of_birth: "Phnom Penh",
+    degree: "PhD in Computer Science",
+    major_name: "Computer Science",
+    institution: "Royal University of Phnom Penh",
+    phone: "+855-12-345-679",
+    email: "dara.sok@example.edu",
+    experience: "8 years in software engineering and data science",
+    photo: null,
+    cv: null,
+    certificate: null,
+    created_at: "2017-08-15T00:00:00Z",
+    department: 1,
+    major: 1,
+    is_active: true,
+    hire_date: "2017-08-15",
+    updated_at: "2025-10-23T14:20:00Z",
+    address: "Phnom Penh, Cambodia",
+    emergency_contact: "Sophia Sok",
+    bio: "Senior lecturer specializing in software engineering and data science with 8 years of experience.",
   };
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
+    full_name: "",
     email: "",
     phone: "",
-    officeLocation: "",
-    officeHours: "",
-    researchInterests: "",
-    languages: "",
+    address: "",
+    bio: "",
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -74,21 +67,35 @@ export default function Profile() {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setProfile(mockProfile);
-      setFormData({
-        firstName: mockProfile.user.firstName,
-        lastName: mockProfile.user.lastName,
-        email: mockProfile.user.email,
-        phone: mockProfile.user.phone,
-        officeLocation: mockProfile.officeLocation,
-        officeHours: mockProfile.officeHours,
-        researchInterests: mockProfile.researchInterests.join(", "),
-        languages: mockProfile.languages.join(", "),
-      });
-      setLoading(false);
-    }, 800);
+    const fetchProfile = async () => {
+      try {
+        // Fetch teacher profile - assuming user ID is available from auth context
+        const profileRes = await get(`${API_ENDPOINTS.LECTURER.TEACHER_PROFILES}1/`); // Replace with actual user ID
+        setProfile(profileRes);
+        setFormData({
+          full_name: profileRes.full_name,
+          email: profileRes.email,
+          phone: profileRes.phone,
+          address: profileRes.address,
+          bio: profileRes.bio || "",
+        });
+      } catch (error) {
+        console.error('Failed to fetch profile:', error);
+        // Fallback to mock data
+        setProfile(mockProfile);
+        setFormData({
+          full_name: mockProfile.full_name,
+          email: mockProfile.email,
+          phone: mockProfile.phone,
+          address: mockProfile.address,
+          bio: mockProfile.bio || "",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
   }, []);
 
   const handleSaveProfile = () => {

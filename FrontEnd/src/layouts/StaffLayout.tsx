@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   LayoutDashboard,
   UserPlus,
@@ -55,6 +56,13 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const location = useLocation();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -164,12 +172,15 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center gap-2 px-3">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Staff" />
-                      <AvatarFallback>ST</AvatarFallback>
+                      <AvatarImage src={user?.avatar} />
+                      <AvatarFallback>{user?.display_name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || 'S'}</AvatarFallback>
                     </Avatar>
                     <div className="hidden md:flex flex-col items-start">
-                      <span className="text-sm font-medium">Staff User</span>
-                      <span className="text-xs text-muted-foreground">Academic Office</span>
+                      <span className="text-sm font-medium">{user?.display_name || user?.name || 'Staff User'}</span>
+                      <span className="text-xs text-muted-foreground">{user?.role_display || 'Staff'}</span>
+                      {user?.department && (
+                        <span className="text-xs text-muted-foreground">{user.department}</span>
+                      )}
                     </div>
                     <ChevronDown className="h-4 w-4" />
                   </Button>
@@ -186,7 +197,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
                     Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign out
                   </DropdownMenuItem>

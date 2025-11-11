@@ -5,7 +5,8 @@ import { Loader } from "@/components/common/Loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useFetch } from "@/hooks/useFetch";
+import { API_ENDPOINTS, get } from "@/api/config";
+import { useState, useEffect } from "react";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--success))", "hsl(var(--warning))", "hsl(var(--destructive))"];
@@ -21,7 +22,46 @@ interface DashboardData {
 }
 
 export default function StaffDashboard() {
-  const { data: dashboardData, loading, error } = useFetch<DashboardData>('/api/staff/dashboard');
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // For now, use mock data until dashboard API is implemented
+        const mockData: DashboardData = {
+          totalStudents: 1250,
+          newRegistrations: 45,
+          activeClasses: 28,
+          certificatesIssued: 156,
+          attendanceRate: 87,
+          registrationTrend: [
+            { month: 'Aug', count: 120 },
+            { month: 'Sep', count: 145 },
+            { month: 'Oct', count: 132 },
+            { month: 'Nov', count: 158 },
+            { month: 'Dec', count: 142 },
+            { month: 'Jan', count: 45 },
+          ],
+          departmentDistribution: [
+            { name: 'Computer Science', count: 320 },
+            { name: 'Business Admin', count: 280 },
+            { name: 'Engineering', count: 250 },
+            { name: 'Arts & Humanities', count: 180 },
+            { name: 'Science', count: 220 },
+          ],
+        };
+        setDashboardData(mockData);
+      } catch (err) {
+        setError('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
 
   if (loading) {
     return (

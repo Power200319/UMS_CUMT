@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, MoreVertical, GraduationCap, Building2, Users, Upload, Download, FileText } from "lucide-react";
+import { Plus, Search, Edit, Trash2, MoreVertical, GraduationCap, Building2, Upload, Download, FileText } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Loader } from "@/components/common/Loader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -43,16 +43,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockMajors, mockDepartments } from "@/api/mockData";
-import type { Major, Department, AcademicLevel } from "@/types";
+import { API_ENDPOINTS, get } from "@/api/config";
+import type { Major, Department, TeacherProfile } from "@/types";
 
 export default function Major() {
   const [loading, setLoading] = useState(true);
   const [majors, setMajors] = useState<Major[]>([]);
-  const [departments] = useState<Department[]>(mockDepartments);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [teacherProfiles, setTeacherProfiles] = useState<TeacherProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
-  const [levelFilter, setLevelFilter] = useState<string>("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingMajor, setEditingMajor] = useState<Major | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -61,102 +61,130 @@ export default function Major() {
   const [formData, setFormData] = useState({
     name: "",
     code: "",
-    departmentId: "",
-    level: "Bachelor" as AcademicLevel,
+    department: "",
     description: "",
-    duration: 4,
-    requiredCredits: 120,
-    accreditation: "",
-    status: "active" as "active" | "inactive",
+    duration_years: 4,
+    degree_type: "Bachelor",
+    is_active: true,
+    department_head: "",
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setMajors(mockMajors);
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [majorsRes, departmentsRes, teachersRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.MAJORS),
+          get(API_ENDPOINTS.ADMIN.DEPARTMENTS),
+          get(API_ENDPOINTS.LECTURER.TEACHER_PROFILES),
+        ]);
+        setMajors(majorsRes.results || majorsRes);
+        setDepartments(departmentsRes.results || departmentsRes);
+        setTeacherProfiles(teachersRes.results || teachersRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setMajors([]);
+        setDepartments([]);
+        setTeacherProfiles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const filteredMajors = majors.filter((major) => {
     const matchesSearch =
       major.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       major.code.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || major.departmentId === departmentFilter;
-    const matchesLevel = levelFilter === "all" || major.level === levelFilter;
-    return matchesSearch && matchesDepartment && matchesLevel;
+    const matchesDepartment = departmentFilter === "all" || major.department === parseInt(departmentFilter);
+    return matchesSearch && matchesDepartment;
   });
 
-  const handleCreateMajor = () => {
-    if (!formData.name.trim() || !formData.code.trim() || !formData.departmentId) return;
+  const handleCreateMajor = async () => {
+    if (!formData.name.trim() || !formData.code.trim() || !formData.department) return;
 
-    // Check for unique code
-    if (majors.some(major => major.code === formData.code && major.id !== editingMajor?.id)) {
-      alert("Major code must be unique");
-      return;
+    try {
+      const response = await fetch(API_ENDPOINTS.ADMIN.MAJORS, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          code: formData.code,
+          department: parseInt(formData.department),
+          description: formData.description,
+          duration_years: formData.duration_years,
+          degree_type: formData.degree_type,
+          is_active: formData.is_active,
+          department_head: formData.department_head ? parseInt(formData.department_head) : null,
+        }),
+      });
+
+      if (response.ok) {
+        const newMajor = await response.json();
+        setMajors(prev => [...prev, newMajor]);
+        resetForm();
+        setIsCreateDialogOpen(false);
+      } else {
+        console.error('Failed to create major');
+      }
+    } catch (error) {
+      console.error('Error creating major:', error);
     }
-
-    const department = departments.find(d => d.id === formData.departmentId);
-    if (!department) return;
-
-    const newMajor: Major = {
-      id: `maj_${Date.now()}`,
-      name: formData.name,
-      code: formData.code,
-      departmentId: formData.departmentId,
-      department,
-      level: formData.level,
-      description: formData.description,
-      duration: formData.duration,
-      requiredCredits: formData.requiredCredits,
-      accreditation: formData.accreditation,
-      activeStudents: 0,
-      status: formData.status,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setMajors(prev => [...prev, newMajor]);
-    resetForm();
-    setIsCreateDialogOpen(false);
   };
 
-  const handleEditMajor = () => {
-    if (!editingMajor || !formData.name.trim() || !formData.code.trim() || !formData.departmentId) return;
+  const handleEditMajor = async () => {
+    if (!editingMajor || !formData.name.trim() || !formData.code.trim() || !formData.department) return;
 
-    // Check for unique code
-    if (majors.some(major => major.code === formData.code && major.id !== editingMajor.id)) {
-      alert("Major code must be unique");
-      return;
+    try {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN.MAJORS}${editingMajor.id}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          code: formData.code,
+          department: parseInt(formData.department),
+          description: formData.description,
+          duration_years: formData.duration_years,
+          degree_type: formData.degree_type,
+          is_active: formData.is_active,
+          department_head: formData.department_head ? parseInt(formData.department_head) : null,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedMajor = await response.json();
+        setMajors(prev => prev.map(major =>
+          major.id === editingMajor.id ? updatedMajor : major
+        ));
+        resetForm();
+        setEditingMajor(null);
+      } else {
+        console.error('Failed to update major');
+      }
+    } catch (error) {
+      console.error('Error updating major:', error);
     }
-
-    const department = departments.find(d => d.id === formData.departmentId);
-    if (!department) return;
-
-    const updatedMajor: Major = {
-      ...editingMajor,
-      name: formData.name,
-      code: formData.code,
-      departmentId: formData.departmentId,
-      department,
-      level: formData.level,
-      description: formData.description,
-      duration: formData.duration,
-      requiredCredits: formData.requiredCredits,
-      accreditation: formData.accreditation,
-      status: formData.status,
-      updatedAt: new Date().toISOString(),
-    };
-
-    setMajors(prev => prev.map(major =>
-      major.id === editingMajor.id ? updatedMajor : major
-    ));
-    resetForm();
-    setEditingMajor(null);
   };
 
-  const handleDeleteMajor = (majorId: string) => {
-    setMajors(prev => prev.filter(major => major.id !== majorId));
+  const handleDeleteMajor = async (majorId: number) => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN.MAJORS}${majorId}/`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setMajors(prev => prev.filter(major => major.id !== majorId));
+      } else {
+        console.error('Failed to delete major');
+      }
+    } catch (error) {
+      console.error('Error deleting major:', error);
+    }
   };
 
   const handleBulkImport = (file: File) => {
@@ -167,9 +195,9 @@ export default function Major() {
   };
 
   const downloadSampleCSV = () => {
-    const csvContent = "name,code,department_code,level,description,duration,required_credits,accreditation\n" +
-      "Computer Science,CS,CS,Bachelor,Computer Science program,4,120,ABET\n" +
-      "Data Science,DS,CS,Bachelor,Data Science and Analytics,4,120,ABET";
+    const csvContent = "name,code,department_code,description,duration\n" +
+      "Computer Science,CS,CS,Computer Science program,4\n" +
+      "Data Science,DS,CS,Data Science and Analytics,4";
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -183,13 +211,12 @@ export default function Major() {
     setFormData({
       name: "",
       code: "",
-      departmentId: "",
-      level: "Bachelor",
+      department: "",
       description: "",
-      duration: 4,
-      requiredCredits: 120,
-      accreditation: "",
-      status: "active",
+      duration_years: 4,
+      degree_type: "Bachelor",
+      is_active: true,
+      department_head: "",
     });
   };
 
@@ -198,13 +225,12 @@ export default function Major() {
     setFormData({
       name: major.name,
       code: major.code,
-      departmentId: major.departmentId,
-      level: major.level,
+      department: major.department.toString(),
       description: major.description || "",
-      duration: major.duration,
-      requiredCredits: major.requiredCredits,
-      accreditation: major.accreditation || "",
-      status: major.status,
+      duration_years: major.duration_years,
+      degree_type: major.degree_type,
+      is_active: major.is_active,
+      department_head: major.department_head?.toString() || "",
     });
   };
 
@@ -265,11 +291,8 @@ export default function Major() {
                       <li>• name: Major name (required)</li>
                       <li>• code: Unique major code (required)</li>
                       <li>• department_code: Department code (required)</li>
-                      <li>• level: Bachelor/Master/Doctorate (required)</li>
                       <li>• description: Major description (optional)</li>
                       <li>• duration: Duration in years (optional, default: 4)</li>
-                      <li>• required_credits: Required credits (optional, default: 120)</li>
-                      <li>• accreditation: Accreditation body (optional)</li>
                     </ul>
                   </div>
                 </div>
@@ -287,10 +310,9 @@ export default function Major() {
                   <DialogTitle>Create New Major</DialogTitle>
                 </DialogHeader>
                 <Tabs defaultValue="basic" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                    <TabsTrigger value="details">Details</TabsTrigger>
-                  </TabsList>
+                   <TabsList className="grid w-full grid-cols-1">
+                     <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                   </TabsList>
                   <TabsContent value="basic" className="space-y-4">
                     <div>
                       <Label htmlFor="majorName">Major Name *</Label>
@@ -312,13 +334,13 @@ export default function Major() {
                     </div>
                     <div>
                       <Label htmlFor="department">Department *</Label>
-                      <Select value={formData.departmentId} onValueChange={(value) => setFormData(prev => ({ ...prev, departmentId: value }))}>
+                      <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select department" />
                         </SelectTrigger>
                         <SelectContent>
                           {departments.map(dept => (
-                            <SelectItem key={dept.id} value={dept.id}>
+                            <SelectItem key={dept.id} value={dept.id.toString()}>
                               {dept.name} ({dept.code})
                             </SelectItem>
                           ))}
@@ -326,8 +348,8 @@ export default function Major() {
                       </Select>
                     </div>
                     <div>
-                      <Label htmlFor="level">Academic Level *</Label>
-                      <Select value={formData.level} onValueChange={(value: AcademicLevel) => setFormData(prev => ({ ...prev, level: value }))}>
+                      <Label htmlFor="degreeType">Degree Type</Label>
+                      <Select value={formData.degree_type} onValueChange={(value) => setFormData(prev => ({ ...prev, degree_type: value }))}>
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
@@ -335,6 +357,22 @@ export default function Major() {
                           <SelectItem value="Bachelor">Bachelor</SelectItem>
                           <SelectItem value="Master">Master</SelectItem>
                           <SelectItem value="Doctorate">Doctorate</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="departmentHead">Department Head</Label>
+                      <Select value={formData.department_head} onValueChange={(value) => setFormData(prev => ({ ...prev, department_head: value }))}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select department head" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">None</SelectItem>
+                          {teacherProfiles.map(teacher => (
+                            <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                              {teacher.full_name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -348,50 +386,6 @@ export default function Major() {
                       />
                     </div>
                   </TabsContent>
-                  <TabsContent value="details" className="space-y-4">
-                    <div>
-                      <Label htmlFor="duration">Duration (years)</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={formData.duration}
-                        onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) || 4 }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="requiredCredits">Required Credits</Label>
-                      <Input
-                        id="requiredCredits"
-                        type="number"
-                        min="1"
-                        value={formData.requiredCredits}
-                        onChange={(e) => setFormData(prev => ({ ...prev, requiredCredits: parseInt(e.target.value) || 120 }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="accreditation">Accreditation</Label>
-                      <Input
-                        id="accreditation"
-                        value={formData.accreditation}
-                        onChange={(e) => setFormData(prev => ({ ...prev, accreditation: e.target.value }))}
-                        placeholder="e.g., ABET, AACSB"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="majorStatus">Status</Label>
-                      <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, status: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </TabsContent>
                 </Tabs>
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" onClick={() => {
@@ -400,7 +394,7 @@ export default function Major() {
                   }}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateMajor} disabled={!formData.name.trim() || !formData.code.trim() || !formData.departmentId}>
+                  <Button onClick={handleCreateMajor} disabled={!formData.name.trim() || !formData.code.trim() || !formData.department}>
                     Create Major
                   </Button>
                 </div>
@@ -429,20 +423,8 @@ export default function Major() {
           <SelectContent>
             <SelectItem value="all">All Departments</SelectItem>
             {departments.map(dept => (
-              <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+              <SelectItem key={dept.id} value={dept.id.toString()}>{dept.name}</SelectItem>
             ))}
-          </SelectContent>
-        </Select>
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="w-full sm:w-48">
-            <GraduationCap className="mr-2 h-4 w-4" />
-            <SelectValue placeholder="All Levels" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Levels</SelectItem>
-            <SelectItem value="Bachelor">Bachelor</SelectItem>
-            <SelectItem value="Master">Master</SelectItem>
-            <SelectItem value="Doctorate">Doctorate</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -462,8 +444,6 @@ export default function Major() {
                 <TableHead>Major</TableHead>
                 <TableHead>Code</TableHead>
                 <TableHead>Department</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Active Students</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -484,16 +464,9 @@ export default function Major() {
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Building2 className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{major.department.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{major.level}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{major.activeStudents}</span>
+                      <span className="text-sm">
+                        {departments.find(d => d.id === major.department)?.name || `Department ${major.department}`}
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -504,10 +477,131 @@ export default function Major() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openEditDialog(major)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-md">
+                            <DialogHeader>
+                              <DialogTitle>Edit Major</DialogTitle>
+                            </DialogHeader>
+                            <Tabs defaultValue="basic" className="w-full">
+                              <TabsList className="grid w-full grid-cols-1">
+                                <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                              </TabsList>
+                              <TabsContent value="basic" className="space-y-4">
+                                <div>
+                                  <Label htmlFor="editMajorName">Major Name *</Label>
+                                  <Input
+                                    id="editMajorName"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="Enter major name"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editMajorCode">Major Code *</Label>
+                                  <Input
+                                    id="editMajorCode"
+                                    value={formData.code}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                    placeholder="Enter major code (e.g., CS, SE)"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDepartment">Department *</Label>
+                                  <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {departments.map(dept => (
+                                        <SelectItem key={dept.id} value={dept.id.toString()}>
+                                          {dept.name} ({dept.code})
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDegreeType">Degree Type</Label>
+                                  <Select value={formData.degree_type} onValueChange={(value) => setFormData(prev => ({ ...prev, degree_type: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Bachelor">Bachelor</SelectItem>
+                                      <SelectItem value="Master">Master</SelectItem>
+                                      <SelectItem value="Doctorate">Doctorate</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDepartmentHead">Department Head</Label>
+                                  <Select value={formData.department_head} onValueChange={(value) => setFormData(prev => ({ ...prev, department_head: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select department head" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="">None</SelectItem>
+                                      {teacherProfiles.map(teacher => (
+                                        <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                          {teacher.full_name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editMajorDescription">Description</Label>
+                                  <Textarea
+                                    id="editMajorDescription"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                    placeholder="Enter major description"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDuration">Duration (years)</Label>
+                                  <Input
+                                    id="editDuration"
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={formData.duration_years}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, duration_years: parseInt(e.target.value) || 4 }))}
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editMajorStatus">Status</Label>
+                                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="active">Active</SelectItem>
+                                      <SelectItem value="inactive">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              </TabsContent>
+                            </Tabs>
+                            <div className="flex justify-end gap-2">
+                              <Button variant="outline" onClick={() => {
+                                resetForm();
+                                setEditingMajor(null);
+                              }}>
+                                Cancel
+                              </Button>
+                              <Button onClick={handleEditMajor} disabled={!formData.name.trim() || !formData.code.trim() || !formData.department}>
+                                Update Major
+                              </Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
                         <DropdownMenuItem>
                           <FileText className="mr-2 h-4 w-4" />
                           View Details

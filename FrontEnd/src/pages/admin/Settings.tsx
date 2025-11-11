@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { mockUsers } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { SystemSettings } from "@/types";
 
 export default function Settings() {
@@ -22,34 +22,28 @@ export default function Settings() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [testResults, setTestResults] = useState<{ [key: string]: boolean | null }>({});
   const [showPasswords, setShowPasswords] = useState<{ [key: string]: boolean }>({});
+  const [users, setUsers] = useState<any[]>([]);
 
-  // Mock settings data
-  const mockSettings: SystemSettings = {
-    schoolName: "Cambodian University of Management and Technology",
-    timezone: "Asia/Phnom_Penh",
-    language: "en",
-    contactEmail: "admin@cumt.edu.kh",
-    contactPhone: "+855-23-123-456",
-    logo: "https://api.dicebear.com/7.x/initials/svg?seed=CUMT",
-    primaryColor: "#2563eb",
-    passwordMinLength: 8,
-    passwordRequireSpecialChar: true,
-    otpEnabled: false,
-    sessionTimeout: 60,
-    smtpHost: "smtp.gmail.com",
-    smtpPort: 587,
-    smtpUser: "noreply@cumt.edu.kh",
-    smtpPassword: "",
-    smsProvider: "twilio",
-    smsApiKey: "",
-  };
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setSettings(mockSettings);
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [settingsRes, usersRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.SETTINGS),
+          get(API_ENDPOINTS.ADMIN.USERS),
+        ]);
+        setSettings(settingsRes);
+        setUsers(usersRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setSettings(null);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleSettingChange = (key: keyof SystemSettings, value: any) => {
@@ -483,7 +477,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockUsers.slice(0, 3).map((user) => (
+                {users.slice(0, 3).map((user) => (
                   <div key={user.id} className="flex items-center justify-between p-4 border rounded">
                     <div className="flex items-center gap-3">
                       <div className="h-2 w-2 bg-green-500 rounded-full" />

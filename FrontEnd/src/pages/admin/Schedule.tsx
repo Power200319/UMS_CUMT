@@ -44,15 +44,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { mockMajors, mockUsers, mockDepartments } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { Schedule, Course, Class, User as UserType, DayOfWeek, Semester } from "@/types";
 
 export default function Schedule() {
   const [loading, setLoading] = useState(true);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [courses] = useState<Course[]>([]);
-  const [classes] = useState<Class[]>([]);
-  const [users] = useState<UserType[]>(mockUsers);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
@@ -62,54 +62,6 @@ export default function Schedule() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<Schedule | null>(null);
 
-  // Mock schedules data
-  const mockSchedules: Schedule[] = [
-    {
-      id: "schedule_1",
-      courseId: "course_1",
-      course: {
-        id: "course_1",
-        code: "CS101",
-        title: "Introduction to Computer Science",
-        description: "",
-        credits: 3,
-        departmentId: "dept_2",
-        department: mockDepartments[1],
-        semester: "1",
-        prerequisites: [],
-        prerequisiteIds: [],
-        status: "active",
-        createdAt: "2024-01-15T00:00:00Z",
-        updatedAt: "2024-01-15T00:00:00Z",
-      },
-      classId: "class_1",
-      class: {
-        id: "class_1",
-        code: "CS301",
-        name: "Computer Science Year 3",
-        majorId: "maj_1",
-        major: mockMajors[0],
-        academicYear: "2024-2025",
-        semester: "1",
-        shift: "Morning",
-        capacity: 50,
-        enrolled: 45,
-        status: "active",
-        createdAt: "2024-01-15T00:00:00Z",
-        updatedAt: "2024-01-15T00:00:00Z",
-      },
-      lecturerId: "u_2",
-      lecturer: mockUsers[1],
-      room: "Room 301",
-      dayOfWeek: "Monday",
-      startTime: "09:00",
-      endTime: "10:30",
-      academicYear: "2024-2025",
-      semester: "1",
-      createdAt: "2024-01-15T00:00:00Z",
-      updatedAt: "2024-01-15T00:00:00Z",
-    },
-  ];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -126,11 +78,30 @@ export default function Schedule() {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setSchedules(mockSchedules);
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [schedulesRes, coursesRes, classesRes, usersRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.SCHEDULE),
+          get(API_ENDPOINTS.ADMIN.COURSES),
+          get(API_ENDPOINTS.ADMIN.CLASSES),
+          get(API_ENDPOINTS.ADMIN.USERS),
+        ]);
+        setSchedules(schedulesRes);
+        setCourses(coursesRes);
+        setClasses(classesRes);
+        setUsers(usersRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setSchedules([]);
+        setCourses([]);
+        setClasses([]);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const filteredSchedules = schedules.filter((schedule) => {

@@ -12,9 +12,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { mockLecturerAnnouncements } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import { useResponsive } from "@/hooks/useResponsive";
-import type { User } from "@/types";
+import type { User, TeacherProfile } from "@/types";
 
 type AnnouncementType = "academic" | "administrative" | "research";
 type Priority = "low" | "medium" | "high";
@@ -40,6 +40,7 @@ interface Announcement {
 export default function Information() {
   const { isMobile } = useResponsive();
   const [loading, setLoading] = useState(true);
+  const [teacherProfile, setTeacherProfile] = useState<TeacherProfile | null>(null);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -53,11 +54,23 @@ export default function Information() {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setAnnouncements(mockLecturerAnnouncements as Announcement[]);
-      setLoading(false);
-    }, 800);
+    const fetchData = async () => {
+      try {
+        // Fetch teacher profile - assuming user ID is available from auth context
+        const profileRes = await get(`${API_ENDPOINTS.LECTURER.TEACHER_PROFILES}1/`); // Replace with actual user ID
+        setTeacherProfile(profileRes);
+
+        // For now, keep mock data until announcements API is implemented
+        setAnnouncements([]); // Replace with actual API call when available
+        setLoading(false);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setAnnouncements([]);
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const getTypeIcon = (type: AnnouncementType) => {
@@ -117,19 +130,42 @@ export default function Information() {
       id: `ann_${Date.now()}`,
       ...newAnnouncement,
       status: "draft",
-      createdBy: {
-        id: "u_2",
-        firstName: "Dara",
-        lastName: "Sok",
+      createdBy: teacherProfile ? {
+        id: teacherProfile.id,
+        username: teacherProfile.user.toString(),
+        email: teacherProfile.email,
+        phone: teacherProfile.phone,
+        address: teacherProfile.address,
+        gender: teacherProfile.gender,
+        profile_image: teacherProfile.photo,
+        is_verified: true,
+        date_of_birth: teacherProfile.date_of_birth,
+        created_at: teacherProfile.created_at,
+        updated_at: teacherProfile.updated_at,
+        first_name: teacherProfile.full_name.split(' ')[0] || '',
+        last_name: teacherProfile.full_name.split(' ').slice(1).join(' ') || '',
+        is_active: true,
+        is_staff: false,
+        is_superuser: false,
+        last_login: new Date().toISOString(),
+      } : {
+        id: 2,
+        username: "dara.sok",
         email: "dara.sok@example.edu",
         phone: "+855-12-345-679",
-        roles: ["Lecturer"],
-        department: "Computer Science",
-        departmentId: "dept_2",
-        status: "active",
-        lastLogin: "2025-10-23T14:20:00Z",
-        createdAt: "2024-02-10T00:00:00Z",
-        updatedAt: "2025-10-23T14:20:00Z",
+        address: "",
+        gender: "male",
+        profile_image: null,
+        is_verified: true,
+        date_of_birth: null,
+        created_at: "2024-02-10T00:00:00Z",
+        updated_at: "2025-10-23T14:20:00Z",
+        first_name: "Dara",
+        last_name: "Sok",
+        is_active: true,
+        is_staff: false,
+        is_superuser: false,
+        last_login: "2025-10-23T14:20:00Z",
       },
       createdAt: new Date().toISOString(),
       views: 0,

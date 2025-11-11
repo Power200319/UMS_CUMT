@@ -43,14 +43,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { mockMajors, mockUsers } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { Class, Major, User as UserType, ClassShift, Semester } from "@/types";
 
 export default function Class() {
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<Class[]>([]);
-  const [majors] = useState<Major[]>(mockMajors);
-  const [users] = useState<UserType[]>(mockUsers);
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [majorFilter, setMajorFilter] = useState<string>("all");
@@ -62,43 +62,6 @@ export default function Class() {
   const [isEnrollDialogOpen, setIsEnrollDialogOpen] = useState(false);
   const [selectedClassForEnroll, setSelectedClassForEnroll] = useState<Class | null>(null);
 
-  // Mock classes data
-  const mockClasses: Class[] = [
-    {
-      id: "class_1",
-      code: "CS301",
-      name: "Computer Science Year 3",
-      majorId: "maj_1",
-      major: mockMajors[0],
-      academicYear: "2024-2025",
-      semester: "1",
-      shift: "Morning",
-      capacity: 50,
-      enrolled: 45,
-      homeroomTeacherId: "u_2",
-      homeroomTeacher: mockUsers[1],
-      status: "active",
-      createdAt: "2024-01-15T00:00:00Z",
-      updatedAt: "2024-01-15T00:00:00Z",
-    },
-    {
-      id: "class_2",
-      code: "SE401",
-      name: "Software Engineering Year 4",
-      majorId: "maj_1",
-      major: mockMajors[0],
-      academicYear: "2024-2025",
-      semester: "1",
-      shift: "Afternoon",
-      capacity: 40,
-      enrolled: 38,
-      homeroomTeacherId: "u_2",
-      homeroomTeacher: mockUsers[1],
-      status: "active",
-      createdAt: "2024-01-15T00:00:00Z",
-      updatedAt: "2024-01-15T00:00:00Z",
-    },
-  ];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -114,11 +77,27 @@ export default function Class() {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setClasses(mockClasses);
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [classesRes, majorsRes, usersRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.CLASSES),
+          get(API_ENDPOINTS.ADMIN.MAJORS),
+          get(API_ENDPOINTS.ADMIN.USERS),
+        ]);
+        setClasses(classesRes.results || classesRes);
+        setMajors(majorsRes.results || majorsRes);
+        setUsers(usersRes.results || usersRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setClasses([]);
+        setMajors([]);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const filteredClasses = classes.filter((cls) => {
@@ -133,70 +112,86 @@ export default function Class() {
     return matchesSearch && matchesDepartment && matchesMajor && matchesYear && matchesSemester && matchesStatus;
   });
 
-  const handleCreateClass = () => {
+  const handleCreateClass = async () => {
     if (!formData.code.trim() || !formData.name.trim() || !formData.majorId) return;
 
-    const major = majors.find(m => m.id === formData.majorId);
-    const homeroomTeacher = users.find(u => u.id === formData.homeroomTeacherId);
+    try {
+      const response = await fetch(API_ENDPOINTS.ADMIN.CLASSES, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          major: formData.majorId,
+          academic_year: formData.academicYear,
+          semester: formData.semester,
+          max_students: formData.capacity,
+          is_active: formData.status === 'active',
+        }),
+      });
 
-    if (!major) return;
-
-    const newClass: Class = {
-      id: `class_${Date.now()}`,
-      code: formData.code,
-      name: formData.name,
-      majorId: formData.majorId,
-      major,
-      academicYear: formData.academicYear,
-      semester: formData.semester,
-      shift: formData.shift,
-      capacity: formData.capacity,
-      enrolled: 0,
-      homeroomTeacherId: formData.homeroomTeacherId || undefined,
-      homeroomTeacher: homeroomTeacher,
-      status: formData.status,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setClasses(prev => [...prev, newClass]);
-    resetForm();
-    setIsCreateDialogOpen(false);
+      if (response.ok) {
+        const newClass = await response.json();
+        setClasses(prev => [...prev, newClass]);
+        resetForm();
+        setIsCreateDialogOpen(false);
+      } else {
+        console.error('Failed to create class');
+      }
+    } catch (error) {
+      console.error('Error creating class:', error);
+    }
   };
 
-  const handleEditClass = () => {
+  const handleEditClass = async () => {
     if (!editingClass || !formData.code.trim() || !formData.name.trim() || !formData.majorId) return;
 
-    const major = majors.find(m => m.id === formData.majorId);
-    const homeroomTeacher = users.find(u => u.id === formData.homeroomTeacherId);
+    try {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN.CLASSES}${editingClass.id}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          major: formData.majorId,
+          academic_year: formData.academicYear,
+          semester: formData.semester,
+          max_students: formData.capacity,
+          is_active: formData.status === 'active',
+        }),
+      });
 
-    if (!major) return;
-
-    const updatedClass: Class = {
-      ...editingClass,
-      code: formData.code,
-      name: formData.name,
-      majorId: formData.majorId,
-      major,
-      academicYear: formData.academicYear,
-      semester: formData.semester,
-      shift: formData.shift,
-      capacity: formData.capacity,
-      homeroomTeacherId: formData.homeroomTeacherId || undefined,
-      homeroomTeacher: homeroomTeacher,
-      status: formData.status,
-      updatedAt: new Date().toISOString(),
-    };
-
-    setClasses(prev => prev.map(cls =>
-      cls.id === editingClass.id ? updatedClass : cls
-    ));
-    resetForm();
-    setEditingClass(null);
+      if (response.ok) {
+        const updatedClass = await response.json();
+        setClasses(prev => prev.map(cls =>
+          cls.id === editingClass.id ? updatedClass : cls
+        ));
+        resetForm();
+        setEditingClass(null);
+      } else {
+        console.error('Failed to update class');
+      }
+    } catch (error) {
+      console.error('Error updating class:', error);
+    }
   };
 
-  const handleDeleteClass = (classId: string) => {
-    setClasses(prev => prev.filter(cls => cls.id !== classId));
+  const handleDeleteClass = async (classId: number) => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN.CLASSES}${classId}/`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setClasses(prev => prev.filter(cls => cls.id !== classId));
+      } else {
+        console.error('Failed to delete class');
+      }
+    } catch (error) {
+      console.error('Error deleting class:', error);
+    }
   };
 
   const handleBulkEnroll = (classId: string, studentIds: string[]) => {
@@ -575,10 +570,144 @@ export default function Class() {
                             <Calendar className="mr-2 h-4 w-4" />
                             View Schedule
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(cls)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Edit Class</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="editClassCode">Class Code *</Label>
+                                  <Input
+                                    id="editClassCode"
+                                    value={formData.code}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                    placeholder="Enter class code (e.g., CS301)"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editClassName">Class Name *</Label>
+                                  <Input
+                                    id="editClassName"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="Enter class name"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editMajor">Major *</Label>
+                                  <Select value={formData.majorId} onValueChange={(value) => setFormData(prev => ({ ...prev, majorId: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select major" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {majors.map(major => (
+                                        <SelectItem key={major.id} value={major.id}>
+                                          {major.name} ({major.code})
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor="editAcademicYear">Academic Year</Label>
+                                    <Select value={formData.academicYear} onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="2024-2025">2024-2025</SelectItem>
+                                        <SelectItem value="2025-2026">2025-2026</SelectItem>
+                                        <SelectItem value="2026-2027">2026-2027</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="editSemester">Semester</Label>
+                                    <Select value={formData.semester} onValueChange={(value: Semester) => setFormData(prev => ({ ...prev, semester: value }))}>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="1">1</SelectItem>
+                                        <SelectItem value="2">2</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <Label htmlFor="editShift">Shift</Label>
+                                    <Select value={formData.shift} onValueChange={(value: ClassShift) => setFormData(prev => ({ ...prev, shift: value }))}>
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="Morning">Morning</SelectItem>
+                                        <SelectItem value="Afternoon">Afternoon</SelectItem>
+                                        <SelectItem value="Evening">Evening</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="editCapacity">Capacity</Label>
+                                    <Input
+                                      id="editCapacity"
+                                      type="number"
+                                      min="1"
+                                      value={formData.capacity}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) || 50 }))}
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editHomeroomTeacher">Homeroom Teacher</Label>
+                                  <Select value={formData.homeroomTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, homeroomTeacherId: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select homeroom teacher" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {users.filter(user => user.roles.includes("Lecturer")).map(user => (
+                                        <SelectItem key={user.id} value={user.id}>
+                                          {user.firstName} {user.lastName}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editClassStatus">Status</Label>
+                                  <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, status: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="active">Active</SelectItem>
+                                      <SelectItem value="inactive">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" onClick={() => {
+                                    resetForm();
+                                    setEditingClass(null);
+                                  }}>
+                                    Cancel
+                                  </Button>
+                                  <Button onClick={handleEditClass} disabled={!formData.code.trim() || !formData.name.trim() || !formData.majorId}>
+                                    Update Class
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

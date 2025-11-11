@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, User, LogOut, Settings, Menu, Search } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -22,6 +24,13 @@ import { LecturerSidebar } from "./LecturerSidebar";
 export const LecturerNavbar = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <nav className="bg-white border-b border-blue-100 shadow-sm sticky top-0 z-50">
@@ -96,12 +105,15 @@ export const LecturerNavbar = () => {
                   aria-label="User menu"
                 >
                   <Avatar className="h-8 w-8 border-2 border-blue-200">
-                    <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Lecturer" />
-                    <AvatarFallback className="bg-blue-100 text-blue-700">LC</AvatarFallback>
+                    <AvatarImage src={user?.avatar} />
+                    <AvatarFallback className="bg-blue-100 text-blue-700">{user?.display_name?.charAt(0)?.toUpperCase() || user?.name?.charAt(0)?.toUpperCase() || 'L'}</AvatarFallback>
                   </Avatar>
                   <div className="hidden md:flex flex-col items-start">
-                    <span className="text-sm font-medium text-blue-900">Dr. Dara Sok</span>
-                    <span className="text-xs text-blue-600">Computer Science</span>
+                    <span className="text-sm font-medium text-blue-900">{user?.display_name || user?.name || 'Lecturer'}</span>
+                    <span className="text-xs text-blue-600">{user?.role_display || 'Lecturer'}</span>
+                    {user?.department && (
+                      <span className="text-xs text-blue-600">{user.department}</span>
+                    )}
                   </div>
                   <User className="h-4 w-4 text-blue-600" />
                 </Button>
@@ -118,7 +130,7 @@ export const LecturerNavbar = () => {
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-red-600 hover:bg-red-50">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 hover:bg-red-50 cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign out
                 </DropdownMenuItem>

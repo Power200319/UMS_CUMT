@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { mockUsers } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { User } from "@/types";
 
 export default function UserManagement() {
@@ -38,11 +38,19 @@ export default function UserManagement() {
   const [roleFilter, setRoleFilter] = useState<string>("all");
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setUsers(mockUsers);
-      setLoading(false);
-    }, 600);
+    const fetchUsers = async () => {
+      try {
+        const response = await get(API_ENDPOINTS.ADMIN.USERS);
+        setUsers(response);
+      } catch (error) {
+        console.error('Failed to fetch users:', error);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
   }, []);
 
   const filteredUsers = users.filter((user) => {

@@ -5,13 +5,7 @@ import { StatCard } from "@/components/common/StatCard";
 import { Loader } from "@/components/common/Loader";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  mockDashboardSummary,
-  mockRegistrationData,
-  mockMajorDistribution,
-  mockAttendanceByMonth,
-  mockRecentActivity,
-} from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { DashboardSummary, RecentActivity } from "@/types";
 import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
@@ -21,14 +15,45 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [registrationData, setRegistrationData] = useState<any[]>([]);
+  const [majorDistribution, setMajorDistribution] = useState<any[]>([]);
+  const [attendanceByMonth, setAttendanceByMonth] = useState<any[]>([]);
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setSummary(mockDashboardSummary);
-      setRecentActivity(mockRecentActivity);
-      setLoading(false);
-    }, 800);
+    const fetchDashboardData = async () => {
+      try {
+        const [summaryRes, activityRes, registrationRes, majorRes, attendanceRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.DASHBOARD),
+          get(`${API_ENDPOINTS.ADMIN.DASHBOARD}/activity`),
+          get(`${API_ENDPOINTS.ADMIN.DASHBOARD}/registrations`),
+          get(`${API_ENDPOINTS.ADMIN.DASHBOARD}/majors`),
+          get(`${API_ENDPOINTS.ADMIN.DASHBOARD}/attendance`),
+        ]);
+
+        setSummary(summaryRes);
+        setRecentActivity(activityRes);
+        setRegistrationData(registrationRes);
+        setMajorDistribution(majorRes);
+        setAttendanceByMonth(attendanceRes);
+      } catch (error) {
+        console.error('Failed to fetch dashboard data:', error);
+        // Set empty data if API fails
+        setSummary({
+          totalStudents: 0,
+          totalTeachers: 0,
+          activeCourses: 0,
+          activeClasses: 0,
+        });
+        setRecentActivity([]);
+        setRegistrationData([]);
+        setMajorDistribution([]);
+        setAttendanceByMonth([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
   }, []);
 
   if (loading || !summary) {
@@ -65,25 +90,21 @@ export default function Dashboard() {
           title="Total Students"
           value={summary.totalStudents.toLocaleString()}
           icon={Users}
-          trend={{ value: 12, isPositive: true }}
         />
         <StatCard
           title="Total Teachers"
           value={summary.totalTeachers}
           icon={GraduationCap}
-          trend={{ value: 5, isPositive: true }}
         />
         <StatCard
           title="Active Courses"
           value={summary.activeCourses}
           icon={BookOpen}
-          trend={{ value: 8, isPositive: true }}
         />
         <StatCard
           title="Active Classes"
           value={summary.activeClasses}
           icon={School}
-          trend={{ value: 3, isPositive: false }}
         />
       </div>
 
@@ -95,7 +116,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={mockRegistrationData}>
+              <LineChart data={registrationData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                 <YAxis stroke="hsl(var(--muted-foreground))" />
@@ -121,7 +142,7 @@ export default function Dashboard() {
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={mockMajorDistribution}
+                  data={majorDistribution}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
@@ -130,7 +151,7 @@ export default function Dashboard() {
                   fill="hsl(var(--primary))"
                   dataKey="count"
                 >
-                  {mockMajorDistribution.map((entry, index) => (
+                  {majorDistribution.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
@@ -152,7 +173,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={mockAttendanceByMonth}>
+              <BarChart data={attendanceByMonth}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                 <YAxis stroke="hsl(var(--muted-foreground))" />

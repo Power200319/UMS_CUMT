@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, MoreVertical, Building2, User, Phone, Mail, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, MoreVertical, Building2, Eye } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Loader } from "@/components/common/Loader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -44,8 +44,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { mockDepartments, mockUsers } from "@/api/mockData";
-import type { Department, User as UserType } from "@/types";
+import { API_ENDPOINTS, get } from "@/api/config";
+import type { Department, StaffProfile } from "@/types";
 
 export default function Department() {
   const [loading, setLoading] = useState(true);
@@ -56,24 +56,51 @@ export default function Department() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [staffProfiles, setStaffProfiles] = useState<StaffProfile[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     name: "",
     code: "",
     description: "",
-    headId: "",
-    contactEmail: "",
-    contactPhone: "",
-    status: "active" as "active" | "inactive",
+    is_active: true,
+    head_of_department: "",
+    building_location: "",
+    contact_email: "",
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setDepartments(mockDepartments);
-      setLoading(false);
-    }, 600);
+    const fetchDepartments = async () => {
+      try {
+        const response = await get(API_ENDPOINTS.ADMIN.DEPARTMENTS);
+        setDepartments(response.results || response);
+        setIsLoggedIn(true);
+      } catch (error) {
+        console.error('Failed to fetch departments:', error);
+        setDepartments([]);
+        // Don't set isLoggedIn to false on API error - assume user is logged in
+        // and API just needs authentication token
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const fetchStaffProfiles = async () => {
+      try {
+        // Use the staff profiles endpoint
+        const response = await get(API_ENDPOINTS.STAFF.STAFF_PROFILES);
+        console.log('Staff profiles response:', response);
+        setStaffProfiles(response.results || response);
+      } catch (error) {
+        console.error('Failed to fetch staff profiles:', error);
+        setStaffProfiles([]);
+        // Don't set isLoggedIn to false on API error
+      }
+    };
+
+    fetchDepartments();
+    fetchStaffProfiles();
   }, []);
 
   const filteredAndSortedDepartments = departments
@@ -90,52 +117,93 @@ export default function Department() {
       return sortOrder === "asc" ? comparison : -comparison;
     });
 
-  const handleCreateDepartment = () => {
+  const handleCreateDepartment = async () => {
     if (!formData.name.trim() || !formData.code.trim()) return;
 
-    const newDepartment: Department = {
-      id: `dept_${Date.now()}`,
-      name: formData.name,
-      code: formData.code,
-      description: formData.description,
-      headId: formData.headId || undefined,
-      contactEmail: formData.contactEmail,
-      contactPhone: formData.contactPhone,
-      majorCount: 0,
-      status: formData.status,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const response = await fetch(API_ENDPOINTS.ADMIN.DEPARTMENTS, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          code: formData.code,
+          description: formData.description,
+          is_active: formData.is_active,
+          head_of_department: formData.head_of_department && formData.head_of_department !== "none" ? parseInt(formData.head_of_department) : null,
+          building_location: formData.building_location,
+          contact_email: formData.contact_email,
+        }),
+      });
 
-    setDepartments(prev => [...prev, newDepartment]);
-    resetForm();
-    setIsCreateDialogOpen(false);
+      if (response.ok) {
+        const newDepartment = await response.json();
+        setDepartments(prev => [...prev, newDepartment]);
+        resetForm();
+        setIsCreateDialogOpen(false);
+      } else {
+        console.error('Failed to create department');
+      }
+    } catch (error) {
+      console.error('Error creating department:', error);
+    }
   };
 
-  const handleEditDepartment = () => {
+  const handleEditDepartment = async () => {
     if (!editingDepartment || !formData.name.trim() || !formData.code.trim()) return;
 
-    const updatedDepartment: Department = {
-      ...editingDepartment,
-      name: formData.name,
-      code: formData.code,
-      description: formData.description,
-      headId: formData.headId || undefined,
-      contactEmail: formData.contactEmail,
-      contactPhone: formData.contactPhone,
-      status: formData.status,
-      updatedAt: new Date().toISOString(),
-    };
+    try {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN.DEPARTMENTS}${editingDepartment.id}/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          code: formData.code,
+          description: formData.description,
+          is_active: formData.is_active,
+          head_of_department: formData.head_of_department && formData.head_of_department !== "none" ? parseInt(formData.head_of_department) : null,
+          building_location: formData.building_location,
+          contact_email: formData.contact_email,
+        }),
+      });
 
-    setDepartments(prev => prev.map(dept =>
-      dept.id === editingDepartment.id ? updatedDepartment : dept
-    ));
-    resetForm();
-    setEditingDepartment(null);
+      if (response.ok) {
+        const updatedDepartment = await response.json();
+        setDepartments(prev => prev.map(dept =>
+          dept.id === editingDepartment.id ? updatedDepartment : dept
+        ));
+        resetForm();
+        setEditingDepartment(null);
+      } else {
+        console.error('Failed to update department');
+      }
+    } catch (error) {
+      console.error('Error updating department:', error);
+    }
   };
 
-  const handleDeleteDepartment = (departmentId: string) => {
-    setDepartments(prev => prev.filter(dept => dept.id !== departmentId));
+  const handleDeleteDepartment = async (departmentId: number) => {
+    try {
+      const response = await fetch(`${API_ENDPOINTS.ADMIN.DEPARTMENTS}${departmentId}/`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+        },
+      });
+
+      if (response.ok) {
+        setDepartments(prev => prev.filter(dept => dept.id !== departmentId));
+      } else {
+        console.error('Failed to delete department');
+      }
+    } catch (error) {
+      console.error('Error deleting department:', error);
+    }
   };
 
   const resetForm = () => {
@@ -143,10 +211,10 @@ export default function Department() {
       name: "",
       code: "",
       description: "",
-      headId: "",
-      contactEmail: "",
-      contactPhone: "",
-      status: "active",
+      is_active: true,
+      head_of_department: "",
+      building_location: "",
+      contact_email: "",
     });
   };
 
@@ -156,16 +224,13 @@ export default function Department() {
       name: department.name,
       code: department.code,
       description: department.description || "",
-      headId: department.headId || "",
-      contactEmail: department.contactEmail || "",
-      contactPhone: department.contactPhone || "",
-      status: department.status,
+      is_active: department.is_active,
+      head_of_department: department.head_of_department?.toString() || "",
+      building_location: department.building_location || "",
+      contact_email: department.contact_email || "",
     });
   };
 
-  const getHeadUser = (headId?: string): UserType | undefined => {
-    return mockUsers.find(user => user.id === headId);
-  };
 
   if (loading) {
     return (
@@ -177,6 +242,7 @@ export default function Department() {
 
   return (
     <div>
+      {/* Remove the login warning since API errors don't mean user isn't logged in */}
       <PageHeader
         title="Department Management"
         description="Manage faculty departments and offices"
@@ -225,42 +291,49 @@ export default function Department() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="deptHead">Department Head</Label>
-                  <Select value={formData.headId} onValueChange={(value) => setFormData(prev => ({ ...prev, headId: value }))}>
+                  <Label htmlFor="deptBuilding">Building Location</Label>
+                  <Input
+                    id="deptBuilding"
+                    value={formData.building_location}
+                    onChange={(e) => setFormData(prev => ({ ...prev, building_location: e.target.value }))}
+                    placeholder="Enter building location"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="deptHead">Head of Department</Label>
+                  <Select value={formData.head_of_department} onValueChange={(value) => setFormData(prev => ({ ...prev, head_of_department: value }))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select department head" />
+                      <SelectValue placeholder="Select head of department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockUsers.filter(user => user.roles.includes("Lecturer") || user.roles.includes("Admin")).map(user => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.firstName} {user.lastName}
+                      <SelectItem value="none">None</SelectItem>
+                      {staffProfiles.length > 0 ? (
+                        staffProfiles.map((staff) => (
+                          <SelectItem key={staff.id} value={staff.id.toString()}>
+                            {staff.full_name} ({staff.position})
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="none" disabled>
+                          No staff members available
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="contactEmail">Contact Email</Label>
+                  <Label htmlFor="deptEmail">Contact Email</Label>
                   <Input
-                    id="contactEmail"
+                    id="deptEmail"
                     type="email"
-                    value={formData.contactEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, contactEmail: e.target.value }))}
+                    value={formData.contact_email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
                     placeholder="Enter contact email"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="contactPhone">Contact Phone</Label>
-                  <Input
-                    id="contactPhone"
-                    value={formData.contactPhone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, contactPhone: e.target.value }))}
-                    placeholder="Enter contact phone"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="deptStatus">Status</Label>
-                  <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, status: value }))}>
+                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -337,7 +410,7 @@ export default function Department() {
             </TableHeader>
             <TableBody>
               {filteredAndSortedDepartments.map((department) => {
-                const headUser = getHeadUser(department.headId);
+                const headUser = null; // No head of department field
                 return (
                   <TableRow key={department.id} className="hover:bg-muted/50">
                     <TableCell>
@@ -352,26 +425,18 @@ export default function Department() {
                       <Badge variant="outline">{department.code}</Badge>
                     </TableCell>
                     <TableCell>
-                      {headUser ? (
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarImage src={headUser.avatar} />
-                            <AvatarFallback className="text-xs">
-                              {headUser.firstName[0]}{headUser.lastName[0]}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{headUser.firstName} {headUser.lastName}</span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Not assigned</span>
-                      )}
+                      <span className="text-sm">
+                        {department.head_of_department ?
+                          staffProfiles.find(s => s.id === department.head_of_department)?.full_name || `Staff ID: ${department.head_of_department}`
+                          : "Not assigned"}
+                      </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">{department.majorCount} majors</span>
+                      <span className="text-sm">0 majors</span>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={department.status === "active" ? "default" : "secondary"}>
-                        {department.status}
+                      <Badge variant={department.is_active ? "default" : "secondary"}>
+                        {department.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -417,47 +482,33 @@ export default function Department() {
                                           <p>{selectedDepartment.description || "No description"}</p>
                                         </div>
                                         <div>
+                                          <Label className="text-sm font-medium">Head of Department</Label>
+                                          <p>{selectedDepartment.head_of_department ?
+                                            staffProfiles.find(s => s.id === selectedDepartment.head_of_department)?.full_name || `Staff ID: ${selectedDepartment.head_of_department}`
+                                            : "Not assigned"}</p>
+                                        </div>
+                                        <div>
+                                          <Label className="text-sm font-medium">Building Location</Label>
+                                          <p>{selectedDepartment.building_location || "Not specified"}</p>
+                                        </div>
+                                        <div>
+                                          <Label className="text-sm font-medium">Contact Email</Label>
+                                          <p>{selectedDepartment.contact_email || "Not specified"}</p>
+                                        </div>
+                                        <div>
                                           <Label className="text-sm font-medium">Status</Label>
-                                          <Badge variant={selectedDepartment.status === "active" ? "default" : "secondary"}>
-                                            {selectedDepartment.status}
+                                          <Badge variant={selectedDepartment.is_active ? "default" : "secondary"}>
+                                            {selectedDepartment.is_active ? "Active" : "Inactive"}
                                           </Badge>
                                         </div>
                                       </CardContent>
                                     </Card>
 
-                                    <Card>
-                                      <CardHeader>
-                                        <CardTitle className="text-lg">Contact Information</CardTitle>
-                                      </CardHeader>
-                                      <CardContent className="space-y-3">
-                                        <div className="flex items-center gap-2">
-                                          <Mail className="h-4 w-4 text-muted-foreground" />
-                                          <div>
-                                            <Label className="text-sm font-medium">Email</Label>
-                                            <p>{selectedDepartment.contactEmail || "Not provided"}</p>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <Phone className="h-4 w-4 text-muted-foreground" />
-                                          <div>
-                                            <Label className="text-sm font-medium">Phone</Label>
-                                            <p>{selectedDepartment.contactPhone || "Not provided"}</p>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <User className="h-4 w-4 text-muted-foreground" />
-                                          <div>
-                                            <Label className="text-sm font-medium">Department Head</Label>
-                                            <p>{getHeadUser(selectedDepartment.headId)?.firstName} {getHeadUser(selectedDepartment.headId)?.lastName || "Not assigned"}</p>
-                                          </div>
-                                        </div>
-                                      </CardContent>
-                                    </Card>
                                   </div>
 
                                   <Card>
                                     <CardHeader>
-                                      <CardTitle className="text-lg">Majors ({selectedDepartment.majorCount})</CardTitle>
+                                      <CardTitle className="text-lg">Majors (0)</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                       <div className="text-center py-8 text-muted-foreground">
@@ -478,10 +529,112 @@ export default function Department() {
                               )}
                             </DrawerContent>
                           </Drawer>
-                          <DropdownMenuItem onClick={() => openEditDialog(department)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md">
+                              <DialogHeader>
+                                <DialogTitle>Edit Department</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <div>
+                                  <Label htmlFor="editDeptName">Department Name *</Label>
+                                  <Input
+                                    id="editDeptName"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                    placeholder="Enter department name"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDeptCode">Department Code *</Label>
+                                  <Input
+                                    id="editDeptCode"
+                                    value={formData.code}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                    placeholder="Enter department code (e.g., CS, BA)"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDeptDescription">Description</Label>
+                                  <Textarea
+                                    id="editDeptDescription"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                    placeholder="Enter department description"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDeptBuilding">Building Location</Label>
+                                  <Input
+                                    id="editDeptBuilding"
+                                    value={formData.building_location}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, building_location: e.target.value }))}
+                                    placeholder="Enter building location"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDeptHead">Head of Department</Label>
+                                  <Select value={formData.head_of_department} onValueChange={(value) => setFormData(prev => ({ ...prev, head_of_department: value }))}>
+                                    <SelectTrigger>
+                                      <SelectValue placeholder="Select head of department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="none">None</SelectItem>
+                                      {staffProfiles.length > 0 ? (
+                                        staffProfiles.map((staff) => (
+                                          <SelectItem key={staff.id} value={staff.id.toString()}>
+                                            {staff.full_name} ({staff.position})
+                                          </SelectItem>
+                                        ))
+                                      ) : (
+                                        <SelectItem value="none" disabled>
+                                          No staff members available
+                                        </SelectItem>
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDeptEmail">Contact Email</Label>
+                                  <Input
+                                    id="editDeptEmail"
+                                    type="email"
+                                    value={formData.contact_email}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
+                                    placeholder="Enter contact email"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editDeptStatus">Status</Label>
+                                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value) => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
+                                    <SelectTrigger>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="active">Active</SelectItem>
+                                      <SelectItem value="inactive">Inactive</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                                <div className="flex justify-end gap-2">
+                                  <Button variant="outline" onClick={() => {
+                                    resetForm();
+                                    setEditingDepartment(null);
+                                  }}>
+                                    Cancel
+                                  </Button>
+                                  <Button onClick={handleEditDepartment} disabled={!formData.name.trim() || !formData.code.trim()}>
+                                    Update Department
+                                  </Button>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

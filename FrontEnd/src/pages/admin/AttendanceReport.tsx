@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Progress } from "@/components/ui/progress";
-import { mockDepartments, mockMajors, mockAttendanceByMonth } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import { BarChart, Bar, LineChart as RechartsLineChart, Line, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart } from "recharts";
 import type { Department, Major } from "@/types";
 
@@ -19,8 +19,9 @@ const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "hsl(var(--success)
 
 export default function AttendanceReport() {
   const [loading, setLoading] = useState(true);
-  const [departments] = useState<Department[]>(mockDepartments);
-  const [majors] = useState<Major[]>(mockMajors);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
+  const [attendanceData, setAttendanceData] = useState<any>(null);
   const [dateRange, setDateRange] = useState({
     start: "2024-09-01",
     end: "2024-12-31",
@@ -62,10 +63,27 @@ export default function AttendanceReport() {
   }));
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [departmentsRes, majorsRes, attendanceRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.DEPARTMENTS),
+          get(API_ENDPOINTS.ADMIN.MAJORS),
+          get(API_ENDPOINTS.ADMIN.ATTENDANCE),
+        ]);
+        setDepartments(departmentsRes);
+        setMajors(majorsRes);
+        setAttendanceData(attendanceRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setDepartments([]);
+        setMajors([]);
+        setAttendanceData(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const handleExport = (format: "csv" | "pdf") => {
@@ -147,7 +165,7 @@ export default function AttendanceReport() {
                 <SelectContent>
                   <SelectItem value="all">All Departments</SelectItem>
                   {departments.map(dept => (
-                    <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                    <SelectItem key={dept.id} value={dept.id.toString()}>{dept.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -161,7 +179,7 @@ export default function AttendanceReport() {
                 <SelectContent>
                   <SelectItem value="all">All Majors</SelectItem>
                   {majors.map(major => (
-                    <SelectItem key={major.id} value={major.id}>{major.name}</SelectItem>
+                    <SelectItem key={major.id} value={major.id.toString()}>{major.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -249,7 +267,7 @@ export default function AttendanceReport() {
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
-                  <RechartsLineChart data={mockAttendanceByMonth}>
+                  <RechartsLineChart data={attendanceData?.monthly || []}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                     <YAxis stroke="hsl(var(--muted-foreground))" />

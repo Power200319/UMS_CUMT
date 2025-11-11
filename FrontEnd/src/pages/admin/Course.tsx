@@ -43,14 +43,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { mockDepartments, mockMajors } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { Course, Department, Major, Semester } from "@/types";
 
 export default function Course() {
   const [loading, setLoading] = useState(true);
   const [courses, setCourses] = useState<Course[]>([]);
-  const [departments] = useState<Department[]>(mockDepartments);
-  const [majors] = useState<Major[]>(mockMajors);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("all");
   const [majorFilter, setMajorFilter] = useState<string>("all");
@@ -61,46 +61,6 @@ export default function Course() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [selectedCourseForAssign, setSelectedCourseForAssign] = useState<Course | null>(null);
 
-  // Mock courses data
-  const mockCourses: Course[] = [
-    {
-      id: "course_1",
-      code: "CS101",
-      title: "Introduction to Computer Science",
-      description: "Fundamental concepts of computer science and programming",
-      credits: 3,
-      departmentId: "dept_2",
-      department: mockDepartments[1],
-      majorId: "maj_1",
-      major: mockMajors[0],
-      semester: "1",
-      prerequisites: [],
-      prerequisiteIds: [],
-      status: "active",
-      createdAt: "2024-01-15T00:00:00Z",
-      updatedAt: "2024-01-15T00:00:00Z",
-    },
-    {
-      id: "course_2",
-      code: "CS201",
-      title: "Data Structures and Algorithms",
-      description: "Advanced data structures and algorithm design",
-      credits: 4,
-      departmentId: "dept_2",
-      department: mockDepartments[1],
-      majorId: "maj_1",
-      major: mockMajors[0],
-      semester: "2",
-      prerequisites: [],
-      prerequisiteIds: ["course_1"],
-      status: "active",
-      createdAt: "2024-01-15T00:00:00Z",
-      updatedAt: "2024-01-15T00:00:00Z",
-    },
-  ];
-
-  // Fix prerequisites after declaration
-  mockCourses[1].prerequisites = [mockCourses[0]];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -116,11 +76,27 @@ export default function Course() {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setCourses(mockCourses);
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [coursesRes, departmentsRes, majorsRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.COURSES),
+          get(API_ENDPOINTS.ADMIN.DEPARTMENTS),
+          get(API_ENDPOINTS.ADMIN.MAJORS),
+        ]);
+        setCourses(coursesRes);
+        setDepartments(departmentsRes);
+        setMajors(majorsRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setCourses([]);
+        setDepartments([]);
+        setMajors([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const filteredCourses = courses.filter((course) => {

@@ -46,15 +46,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { mockUsers, mockDepartments, mockMajors } from "@/api/mockData";
+import { API_ENDPOINTS, get } from "@/api/config";
 import type { Notification, NotificationAudience, NotificationStatus, User as UserType, Department, Major } from "@/types";
 
 export default function Notification() {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [users] = useState<UserType[]>(mockUsers);
-  const [departments] = useState<Department[]>(mockDepartments);
-  const [majors] = useState<Major[]>(mockMajors);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [majors, setMajors] = useState<Major[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [audienceFilter, setAudienceFilter] = useState<string>("all");
@@ -63,36 +63,6 @@ export default function Notification() {
   const [editingNotification, setEditingNotification] = useState<Notification | null>(null);
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
 
-  // Mock notifications data
-  const mockNotifications: Notification[] = [
-    {
-      id: "notif_1",
-      title: "Mid-term Exam Schedule",
-      message: "Dear students, the mid-term examinations will begin next week. Please check your schedules and prepare accordingly.",
-      audience: "All",
-      creatorId: "u_1",
-      creator: mockUsers[0],
-      scheduledAt: "2024-10-25T09:00:00Z",
-      sentAt: "2024-10-25T09:00:00Z",
-      status: "Sent",
-      attachments: [],
-      createdAt: "2024-10-20T10:00:00Z",
-      updatedAt: "2024-10-25T09:00:00Z",
-    },
-    {
-      id: "notif_2",
-      title: "Library Hours Extended",
-      message: "The university library will remain open until 10 PM during exam week to accommodate study needs.",
-      audience: "All",
-      creatorId: "u_1",
-      creator: mockUsers[0],
-      scheduledAt: "2024-10-28T08:00:00Z",
-      status: "Scheduled",
-      attachments: [],
-      createdAt: "2024-10-22T14:30:00Z",
-      updatedAt: "2024-10-22T14:30:00Z",
-    },
-  ];
 
   // Form state
   const [formData, setFormData] = useState({
@@ -109,11 +79,30 @@ export default function Notification() {
   });
 
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setNotifications(mockNotifications);
-      setLoading(false);
-    }, 600);
+    const fetchData = async () => {
+      try {
+        const [notificationsRes, usersRes, departmentsRes, majorsRes] = await Promise.all([
+          get(API_ENDPOINTS.ADMIN.NOTIFICATIONS),
+          get(API_ENDPOINTS.ADMIN.USERS),
+          get(API_ENDPOINTS.ADMIN.DEPARTMENTS),
+          get(API_ENDPOINTS.ADMIN.MAJORS),
+        ]);
+        setNotifications(notificationsRes);
+        setUsers(usersRes);
+        setDepartments(departmentsRes);
+        setMajors(majorsRes);
+      } catch (error) {
+        console.error('Failed to fetch data:', error);
+        setNotifications([]);
+        setUsers([]);
+        setDepartments([]);
+        setMajors([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   const filteredNotifications = notifications.filter((notif) => {
@@ -135,7 +124,7 @@ export default function Notification() {
       audience: formData.audience,
       targetIds: formData.targetIds,
       creatorId: "u_1", // Current user
-      creator: mockUsers[0],
+      creator: users[0] || { id: "u_1", firstName: "Admin", lastName: "User", avatar: "", email: "", phone: "", roles: ["Admin"], department: "", departmentId: "", status: "active", lastLogin: "", createdAt: "", updatedAt: "" },
       scheduledAt: formData.sendNow ? new Date().toISOString() : formData.scheduledAt,
       sentAt: formData.sendNow ? new Date().toISOString() : undefined,
       status: formData.sendNow ? "Sent" : "Scheduled",

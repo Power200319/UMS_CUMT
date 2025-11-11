@@ -1,3 +1,11 @@
-from django.shortcuts import render
+from rest_framework import viewsets
+from .models import StudentProfile, StudentAttendance
+from .serializers import StudentProfileSerializer, StudentAttendanceSerializer
 
-# Create your views here.
+class StudentProfileViewSet(viewsets.ModelViewSet):
+    queryset = StudentProfile.objects.all()
+    serializer_class = StudentProfileSerializer
+
+class StudentAttendanceViewSet(viewsets.ModelViewSet):
+    queryset = StudentAttendance.objects.all()
+    serializer_class = StudentAttendanceSerializer
