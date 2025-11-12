@@ -43,7 +43,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { API_ENDPOINTS, get } from "@/api/config";
+import { API_ENDPOINTS, get, post, put, del } from "@/api/config";
 import type { Class, Major, User as UserType, ClassShift, Semester } from "@/types";
 
 export default function Class() {
@@ -65,14 +65,14 @@ export default function Class() {
 
   // Form state
   const [formData, setFormData] = useState({
-    code: "",
     name: "",
     majorId: "",
-    academicYear: "2024-2025",
-    semester: "1" as Semester,
-    shift: "Morning" as ClassShift,
+    academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+    semester: "1",
+    shift: "morning" as ClassShift,
     capacity: 50,
-    homeroomTeacherId: "",
+    roomNumber: "TBA",
+    classTeacherId: "",
     status: "active" as "active" | "inactive",
   });
 
@@ -102,77 +102,58 @@ export default function Class() {
 
   const filteredClasses = classes.filter((cls) => {
     const matchesSearch =
-      cls.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cls.code.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesDepartment = departmentFilter === "all" || cls.major.departmentId === departmentFilter;
-    const matchesMajor = majorFilter === "all" || cls.majorId === majorFilter;
-    const matchesYear = yearFilter === "all" || cls.academicYear === yearFilter;
+      cls.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesDepartment = departmentFilter === "all" || majors.find(m => m.id === cls.major)?.department === parseInt(departmentFilter);
+    const matchesMajor = majorFilter === "all" || cls.major === parseInt(majorFilter);
+    const matchesYear = yearFilter === "all" || cls.academic_year === yearFilter;
     const matchesSemester = semesterFilter === "all" || cls.semester === semesterFilter;
-    const matchesStatus = statusFilter === "all" || cls.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || (cls.is_active ? "active" : "inactive") === statusFilter;
     return matchesSearch && matchesDepartment && matchesMajor && matchesYear && matchesSemester && matchesStatus;
   });
 
   const handleCreateClass = async () => {
-    if (!formData.code.trim() || !formData.name.trim() || !formData.majorId) return;
+    if (!formData.name.trim() || !formData.majorId) return;
 
     try {
-      const response = await fetch(API_ENDPOINTS.ADMIN.CLASSES, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          major: formData.majorId,
-          academic_year: formData.academicYear,
-          semester: formData.semester,
-          max_students: formData.capacity,
-          is_active: formData.status === 'active',
-        }),
+      const newClass = await post(API_ENDPOINTS.ADMIN.CLASSES, {
+        name: formData.name,
+        major: parseInt(formData.majorId),
+        academic_year: formData.academicYear,
+        semester: formData.semester,
+        shift: formData.shift,
+        max_students: formData.capacity,
+        room_number: formData.roomNumber,
+        class_teacher: formData.classTeacherId ? parseInt(formData.classTeacherId) : null,
+        is_active: formData.status === 'active',
       });
-
-      if (response.ok) {
-        const newClass = await response.json();
-        setClasses(prev => [...prev, newClass]);
-        resetForm();
-        setIsCreateDialogOpen(false);
-      } else {
-        console.error('Failed to create class');
-      }
+      setClasses(prev => [...prev, newClass]);
+      resetForm();
+      setIsCreateDialogOpen(false);
     } catch (error) {
       console.error('Error creating class:', error);
     }
   };
 
   const handleEditClass = async () => {
-    if (!editingClass || !formData.code.trim() || !formData.name.trim() || !formData.majorId) return;
+    if (!editingClass || !formData.name.trim() || !formData.majorId) return;
 
     try {
-      const response = await fetch(`${API_ENDPOINTS.ADMIN.CLASSES}${editingClass.id}/`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          major: formData.majorId,
-          academic_year: formData.academicYear,
-          semester: formData.semester,
-          max_students: formData.capacity,
-          is_active: formData.status === 'active',
-        }),
+      const updatedClass = await put(`${API_ENDPOINTS.ADMIN.CLASSES}${editingClass.id}/`, {
+        name: formData.name,
+        major: parseInt(formData.majorId),
+        academic_year: formData.academicYear,
+        semester: formData.semester,
+        shift: formData.shift,
+        max_students: formData.capacity,
+        room_number: formData.roomNumber,
+        class_teacher: formData.classTeacherId ? parseInt(formData.classTeacherId) : null,
+        is_active: formData.status === 'active',
       });
-
-      if (response.ok) {
-        const updatedClass = await response.json();
-        setClasses(prev => prev.map(cls =>
-          cls.id === editingClass.id ? updatedClass : cls
-        ));
-        resetForm();
-        setEditingClass(null);
-      } else {
-        console.error('Failed to update class');
-      }
+      setClasses(prev => prev.map(cls =>
+        cls.id === editingClass.id ? updatedClass : cls
+      ));
+      resetForm();
+      setEditingClass(null);
     } catch (error) {
       console.error('Error updating class:', error);
     }
@@ -180,38 +161,31 @@ export default function Class() {
 
   const handleDeleteClass = async (classId: number) => {
     try {
-      const response = await fetch(`${API_ENDPOINTS.ADMIN.CLASSES}${classId}/`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        setClasses(prev => prev.filter(cls => cls.id !== classId));
-      } else {
-        console.error('Failed to delete class');
-      }
+      await del(`${API_ENDPOINTS.ADMIN.CLASSES}${classId}/`);
+      setClasses(prev => prev.filter(cls => cls.id !== classId));
     } catch (error) {
       console.error('Error deleting class:', error);
     }
   };
 
-  const handleBulkEnroll = (classId: string, studentIds: string[]) => {
+  const handleBulkEnroll = (classId: number, studentIds: string[]) => {
     setClasses(prev => prev.map(cls =>
       cls.id === classId
-        ? { ...cls, enrolled: Math.min(cls.enrolled + studentIds.length, cls.capacity) }
+        ? { ...cls, current_students: Math.min((cls.current_students || 0) + studentIds.length, cls.max_students || 50) }
         : cls
     ));
   };
 
   const resetForm = () => {
     setFormData({
-      code: "",
       name: "",
       majorId: "",
-      academicYear: "2024-2025",
-      semester: "1",
-      shift: "Morning",
+      academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+      semester: "1" as any,
+      shift: "morning",
       capacity: 50,
-      homeroomTeacherId: "",
+      roomNumber: "TBA",
+      classTeacherId: "",
       status: "active",
     });
   };
@@ -219,15 +193,15 @@ export default function Class() {
   const openEditDialog = (cls: Class) => {
     setEditingClass(cls);
     setFormData({
-      code: cls.code,
       name: cls.name,
-      majorId: cls.majorId,
-      academicYear: cls.academicYear,
+      majorId: cls.major?.toString() || "",
+      academicYear: cls.academic_year,
       semester: cls.semester,
       shift: cls.shift,
-      capacity: cls.capacity,
-      homeroomTeacherId: cls.homeroomTeacherId || "",
-      status: cls.status,
+      capacity: cls.max_students,
+      roomNumber: cls.room_number || "TBA",
+      classTeacherId: cls.class_teacher?.toString() || "",
+      status: cls.is_active ? "active" : "inactive",
     });
   };
 
@@ -235,8 +209,19 @@ export default function Class() {
     return Array.from(new Set(classes.map(cls => cls[key]))).sort();
   };
 
-  const getCapacityWarning = (enrolled: number, capacity: number) => {
-    const percentage = (enrolled / capacity) * 100;
+  const generateAcademicYears = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = 0; i < 5; i++) {
+      const startYear = currentYear + i;
+      const endYear = startYear + 1;
+      years.push(`${startYear}-${endYear}`);
+    }
+    return years;
+  };
+
+  const getCapacityWarning = (currentStudents: number, maxStudents: number) => {
+    const percentage = (currentStudents / maxStudents) * 100;
     if (percentage >= 100) return { level: "error", message: "Class is full" };
     if (percentage >= 90) return { level: "warning", message: "Near capacity" };
     return null;
@@ -273,15 +258,6 @@ export default function Class() {
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="classCode">Class Code *</Label>
-                  <Input
-                    id="classCode"
-                    value={formData.code}
-                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                    placeholder="Enter class code (e.g., CS301)"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="className">Class Name *</Label>
                   <Input
                     id="className"
@@ -298,7 +274,7 @@ export default function Class() {
                     </SelectTrigger>
                     <SelectContent>
                       {majors.map(major => (
-                        <SelectItem key={major.id} value={major.id}>
+                        <SelectItem key={major.id} value={major.id.toString()}>
                           {major.name} ({major.code})
                         </SelectItem>
                       ))}
@@ -309,25 +285,27 @@ export default function Class() {
                   <div>
                     <Label htmlFor="academicYear">Academic Year</Label>
                     <Select value={formData.academicYear} onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select Academic Year" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="2024-2025">2024-2025</SelectItem>
-                        <SelectItem value="2025-2026">2025-2026</SelectItem>
-                        <SelectItem value="2026-2027">2026-2027</SelectItem>
+                        {generateAcademicYears().map((year) => (
+                          <SelectItem key={year} value={year}>
+                            {year}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <Label htmlFor="semester">Semester</Label>
-                    <Select value={formData.semester} onValueChange={(value: Semester) => setFormData(prev => ({ ...prev, semester: value }))}>
+                    <Select value={formData.semester} onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="1">1</SelectItem>
-                        <SelectItem value="2">2</SelectItem>
+                        <SelectItem value="1">Semester 1</SelectItem>
+                        <SelectItem value="2">Semester 2</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -340,9 +318,9 @@ export default function Class() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Morning">Morning</SelectItem>
-                        <SelectItem value="Afternoon">Afternoon</SelectItem>
-                        <SelectItem value="Evening">Evening</SelectItem>
+                        <SelectItem value="morning">Morning</SelectItem>
+                        <SelectItem value="afternoon">Afternoon</SelectItem>
+                        <SelectItem value="evening">Evening</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -358,15 +336,24 @@ export default function Class() {
                   </div>
                 </div>
                 <div>
-                  <Label htmlFor="homeroomTeacher">Homeroom Teacher</Label>
-                  <Select value={formData.homeroomTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, homeroomTeacherId: value }))}>
+                  <Label htmlFor="roomNumber">Room Number</Label>
+                  <Input
+                    id="roomNumber"
+                    value={formData.roomNumber}
+                    onChange={(e) => setFormData(prev => ({ ...prev, roomNumber: e.target.value }))}
+                    placeholder="Enter room number"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="classTeacher">Class Teacher</Label>
+                  <Select value={formData.classTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, classTeacherId: value }))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select homeroom teacher" />
+                      <SelectValue placeholder="Select class teacher" />
                     </SelectTrigger>
                     <SelectContent>
-                      {users.filter(user => user.roles.includes("Lecturer")).map(user => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.firstName} {user.lastName}
+                      {users.filter(user => user.is_staff).map(user => (
+                        <SelectItem key={user.id} value={user.id.toString()}>
+                          {user.first_name} {user.last_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -391,7 +378,7 @@ export default function Class() {
                   }}>
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateClass} disabled={!formData.code.trim() || !formData.name.trim() || !formData.majorId}>
+                  <Button onClick={handleCreateClass} disabled={!formData.name.trim() || !formData.majorId}>
                     Create Class
                   </Button>
                 </div>
@@ -419,11 +406,10 @@ export default function Class() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
-              {Array.from(new Set(majors.map(m => m.departmentId))).map(deptId => {
-                const dept = majors.find(m => m.departmentId === deptId)?.department;
-                return dept ? (
-                  <SelectItem key={deptId} value={deptId}>{dept.name}</SelectItem>
-                ) : null;
+              {Array.from(new Set(majors.map(m => m.department))).map(deptId => {
+                return (
+                  <SelectItem key={deptId} value={deptId.toString()}>{deptId}</SelectItem>
+                );
               })}
             </SelectContent>
           </Select>
@@ -434,7 +420,7 @@ export default function Class() {
             <SelectContent>
               <SelectItem value="all">All Majors</SelectItem>
               {majors.map(major => (
-                <SelectItem key={major.id} value={major.id}>{major.code}</SelectItem>
+                <SelectItem key={major.id} value={major.id.toString()}>{major.code}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -444,7 +430,7 @@ export default function Class() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Years</SelectItem>
-              {getUniqueValues("academicYear").map((year: string) => (
+              {getUniqueValues("academic_year").map((year: string) => (
                 <SelectItem key={year} value={year}>{year}</SelectItem>
               ))}
             </SelectContent>
@@ -455,8 +441,8 @@ export default function Class() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="1">1</SelectItem>
-              <SelectItem value="2">2</SelectItem>
+              <SelectItem value="1">Semester 1</SelectItem>
+              <SelectItem value="2">Semester 2</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -495,21 +481,21 @@ export default function Class() {
             </TableHeader>
             <TableBody>
               {filteredClasses.map((cls) => {
-                const capacityWarning = getCapacityWarning(cls.enrolled, cls.capacity);
+                const capacityWarning = getCapacityWarning(cls.current_students || 0, cls.max_students);
                 return (
                   <TableRow key={cls.id} className="hover:bg-muted/50">
                     <TableCell>
                       <div>
                         <p className="font-medium">{cls.name}</p>
-                        <p className="text-sm text-muted-foreground">{cls.code}</p>
+                        <p className="text-sm text-muted-foreground">{cls.room_number}</p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{cls.major.code}</Badge>
+                      <Badge variant="outline">{majors.find(m => m.id === cls.major)?.name || "N/A"}</Badge>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
-                        <p>{cls.academicYear}</p>
+                        <p>{cls.academic_year}</p>
                         <p className="text-muted-foreground">Sem {cls.semester}</p>
                       </div>
                     </TableCell>
@@ -520,10 +506,10 @@ export default function Class() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm">{cls.enrolled}/{cls.capacity}</span>
+                          <span className="text-sm">{cls.current_students || 0}/{cls.max_students}</span>
                         </div>
                         <Progress
-                          value={(cls.enrolled / cls.capacity) * 100}
+                          value={((cls.current_students || 0) / cls.max_students) * 100}
                           className="h-2 w-20"
                         />
                         {capacityWarning && (
@@ -537,15 +523,14 @@ export default function Class() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      {cls.homeroomTeacher ? (
+                      {cls.class_teacher ? (
                         <div className="flex items-center gap-2">
                           <Avatar className="h-6 w-6">
-                            <AvatarImage src={cls.homeroomTeacher.avatar} />
                             <AvatarFallback className="text-xs">
-                              {cls.homeroomTeacher.firstName[0]}{cls.homeroomTeacher.lastName[0]}
+                              {users.find(u => u.id === cls.class_teacher)?.first_name?.[0]}{users.find(u => u.id === cls.class_teacher)?.last_name?.[0]}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="text-sm">{cls.homeroomTeacher.firstName} {cls.homeroomTeacher.lastName}</span>
+                          <span className="text-sm">{users.find(u => u.id === cls.class_teacher)?.first_name} {users.find(u => u.id === cls.class_teacher)?.last_name}</span>
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">Not assigned</span>
@@ -583,15 +568,6 @@ export default function Class() {
                               </DialogHeader>
                               <div className="space-y-4">
                                 <div>
-                                  <Label htmlFor="editClassCode">Class Code *</Label>
-                                  <Input
-                                    id="editClassCode"
-                                    value={formData.code}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                                    placeholder="Enter class code (e.g., CS301)"
-                                  />
-                                </div>
-                                <div>
                                   <Label htmlFor="editClassName">Class Name *</Label>
                                   <Input
                                     id="editClassName"
@@ -608,7 +584,7 @@ export default function Class() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {majors.map(major => (
-                                        <SelectItem key={major.id} value={major.id}>
+                                        <SelectItem key={major.id} value={major.id.toString()}>
                                           {major.name} ({major.code})
                                         </SelectItem>
                                       ))}
@@ -619,25 +595,27 @@ export default function Class() {
                                   <div>
                                     <Label htmlFor="editAcademicYear">Academic Year</Label>
                                     <Select value={formData.academicYear} onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}>
-                                      <SelectTrigger>
-                                        <SelectValue />
+                                      <SelectTrigger className="w-full">
+                                        <SelectValue placeholder="Select Academic Year" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="2024-2025">2024-2025</SelectItem>
-                                        <SelectItem value="2025-2026">2025-2026</SelectItem>
-                                        <SelectItem value="2026-2027">2026-2027</SelectItem>
+                                        {generateAcademicYears().map((year) => (
+                                          <SelectItem key={year} value={year}>
+                                            {year}
+                                          </SelectItem>
+                                        ))}
                                       </SelectContent>
                                     </Select>
                                   </div>
                                   <div>
                                     <Label htmlFor="editSemester">Semester</Label>
-                                    <Select value={formData.semester} onValueChange={(value: Semester) => setFormData(prev => ({ ...prev, semester: value }))}>
+                                    <Select value={formData.semester} onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}>
                                       <SelectTrigger>
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="1">1</SelectItem>
-                                        <SelectItem value="2">2</SelectItem>
+                                        <SelectItem value="1">Semester 1</SelectItem>
+                                        <SelectItem value="2">Semester 2</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -650,9 +628,9 @@ export default function Class() {
                                         <SelectValue />
                                       </SelectTrigger>
                                       <SelectContent>
-                                        <SelectItem value="Morning">Morning</SelectItem>
-                                        <SelectItem value="Afternoon">Afternoon</SelectItem>
-                                        <SelectItem value="Evening">Evening</SelectItem>
+                                        <SelectItem value="morning">Morning</SelectItem>
+                                        <SelectItem value="afternoon">Afternoon</SelectItem>
+                                        <SelectItem value="evening">Evening</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
@@ -668,15 +646,24 @@ export default function Class() {
                                   </div>
                                 </div>
                                 <div>
-                                  <Label htmlFor="editHomeroomTeacher">Homeroom Teacher</Label>
-                                  <Select value={formData.homeroomTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, homeroomTeacherId: value }))}>
+                                  <Label htmlFor="editRoomNumber">Room Number</Label>
+                                  <Input
+                                    id="editRoomNumber"
+                                    value={formData.roomNumber}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, roomNumber: e.target.value }))}
+                                    placeholder="Enter room number"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor="editClassTeacher">Class Teacher</Label>
+                                  <Select value={formData.classTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, classTeacherId: value }))}>
                                     <SelectTrigger>
-                                      <SelectValue placeholder="Select homeroom teacher" />
+                                      <SelectValue placeholder="Select class teacher" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {users.filter(user => user.roles.includes("Lecturer")).map(user => (
-                                        <SelectItem key={user.id} value={user.id}>
-                                          {user.firstName} {user.lastName}
+                                      {users.filter(user => user.is_staff).map(user => (
+                                        <SelectItem key={user.id} value={user.id.toString()}>
+                                          {user.first_name} {user.last_name}
                                         </SelectItem>
                                       ))}
                                     </SelectContent>
@@ -701,7 +688,7 @@ export default function Class() {
                                   }}>
                                     Cancel
                                   </Button>
-                                  <Button onClick={handleEditClass} disabled={!formData.code.trim() || !formData.name.trim() || !formData.majorId}>
+                                  <Button onClick={handleEditClass} disabled={!formData.name.trim() || !formData.majorId}>
                                     Update Class
                                   </Button>
                                 </div>
@@ -751,7 +738,7 @@ export default function Class() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                <span>Current enrollment: {selectedClassForEnroll?.enrolled}/{selectedClassForEnroll?.capacity}</span>
+                <span>Current enrollment: {selectedClassForEnroll?.current_students || 0}/{selectedClassForEnroll?.max_students}</span>
               </div>
               <Button size="sm">
                 <UserPlus className="mr-2 h-4 w-4" />

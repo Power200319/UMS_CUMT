@@ -55,7 +55,7 @@ export const API_ENDPOINTS = {
     DASHBOARD_REGISTRATIONS: `${API_BASE_URL}/admin/dashboard/registrations/`,
     DASHBOARD_MAJORS: `${API_BASE_URL}/admin/dashboard/majors/`,
     DASHBOARD_ATTENDANCE: `${API_BASE_URL}/admin/dashboard/attendance/`,
-    USERS: `${API_BASE_URL}/admin/users/`,
+    USERS: `${API_BASE_URL}/users/users/`,
     DEPARTMENTS: `${API_BASE_URL}/admin/departments/`,
     MAJORS: `${API_BASE_URL}/admin/majors/`,
     CLASSES: `${API_BASE_URL}/admin/classes/`,

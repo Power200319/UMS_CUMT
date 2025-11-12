@@ -24,6 +24,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -44,7 +45,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
-import { API_ENDPOINTS, get } from "@/api/config";
+import { API_ENDPOINTS, get, post, put, del } from "@/api/config";
 import type { Department, StaffProfile } from "@/types";
 
 export default function Department() {
@@ -54,9 +55,11 @@ export default function Department() {
   const [sortBy, setSortBy] = useState<"name" | "code">("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [staffProfiles, setStaffProfiles] = useState<StaffProfile[]>([]);
+  const [majors, setMajors] = useState<any[]>([]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Form state
@@ -101,7 +104,18 @@ export default function Department() {
 
     fetchDepartments();
     fetchStaffProfiles();
+    fetchMajors();
   }, []);
+
+  const fetchMajors = async () => {
+    try {
+      const response = await get(API_ENDPOINTS.ADMIN.MAJORS);
+      setMajors(response.results || response);
+    } catch (error) {
+      console.error('Failed to fetch majors:', error);
+      setMajors([]);
+    }
+  };
 
   const filteredAndSortedDepartments = departments
     .filter((dept) => {
@@ -121,31 +135,18 @@ export default function Department() {
     if (!formData.name.trim() || !formData.code.trim()) return;
 
     try {
-      const response = await fetch(API_ENDPOINTS.ADMIN.DEPARTMENTS, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          code: formData.code,
-          description: formData.description,
-          is_active: formData.is_active,
-          head_of_department: formData.head_of_department && formData.head_of_department !== "none" ? parseInt(formData.head_of_department) : null,
-          building_location: formData.building_location,
-          contact_email: formData.contact_email,
-        }),
+      const newDepartment = await post(API_ENDPOINTS.ADMIN.DEPARTMENTS, {
+        name: formData.name,
+        code: formData.code,
+        description: formData.description,
+        is_active: formData.is_active,
+        head_of_department: formData.head_of_department && formData.head_of_department !== "none" ? parseInt(formData.head_of_department) : null,
+        building_location: formData.building_location,
+        contact_email: formData.contact_email,
       });
-
-      if (response.ok) {
-        const newDepartment = await response.json();
-        setDepartments(prev => [...prev, newDepartment]);
-        resetForm();
-        setIsCreateDialogOpen(false);
-      } else {
-        console.error('Failed to create department');
-      }
+      setDepartments(prev => [...prev, newDepartment]);
+      resetForm();
+      setIsCreateDialogOpen(false);
     } catch (error) {
       console.error('Error creating department:', error);
     }
@@ -155,33 +156,21 @@ export default function Department() {
     if (!editingDepartment || !formData.name.trim() || !formData.code.trim()) return;
 
     try {
-      const response = await fetch(`${API_ENDPOINTS.ADMIN.DEPARTMENTS}${editingDepartment.id}/`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          code: formData.code,
-          description: formData.description,
-          is_active: formData.is_active,
-          head_of_department: formData.head_of_department && formData.head_of_department !== "none" ? parseInt(formData.head_of_department) : null,
-          building_location: formData.building_location,
-          contact_email: formData.contact_email,
-        }),
+      const updatedDepartment = await put(`${API_ENDPOINTS.ADMIN.DEPARTMENTS}${editingDepartment.id}/`, {
+        name: formData.name,
+        code: formData.code,
+        description: formData.description,
+        is_active: formData.is_active,
+        head_of_department: formData.head_of_department && formData.head_of_department !== "none" ? parseInt(formData.head_of_department) : null,
+        building_location: formData.building_location,
+        contact_email: formData.contact_email,
       });
-
-      if (response.ok) {
-        const updatedDepartment = await response.json();
-        setDepartments(prev => prev.map(dept =>
-          dept.id === editingDepartment.id ? updatedDepartment : dept
-        ));
-        resetForm();
-        setEditingDepartment(null);
-      } else {
-        console.error('Failed to update department');
-      }
+      setDepartments(prev => prev.map(dept =>
+        dept.id === editingDepartment.id ? updatedDepartment : dept
+      ));
+      resetForm();
+      setEditingDepartment(null);
+      setIsEditDialogOpen(false);
     } catch (error) {
       console.error('Error updating department:', error);
     }
@@ -189,18 +178,8 @@ export default function Department() {
 
   const handleDeleteDepartment = async (departmentId: number) => {
     try {
-      const response = await fetch(`${API_ENDPOINTS.ADMIN.DEPARTMENTS}${departmentId}/`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-        },
-      });
-
-      if (response.ok) {
-        setDepartments(prev => prev.filter(dept => dept.id !== departmentId));
-      } else {
-        console.error('Failed to delete department');
-      }
+      await del(`${API_ENDPOINTS.ADMIN.DEPARTMENTS}${departmentId}/`);
+      setDepartments(prev => prev.filter(dept => dept.id !== departmentId));
     } catch (error) {
       console.error('Error deleting department:', error);
     }
@@ -229,6 +208,7 @@ export default function Department() {
       building_location: department.building_location || "",
       contact_email: department.contact_email || "",
     });
+    setIsEditDialogOpen(true);
   };
 
 
@@ -333,7 +313,7 @@ export default function Department() {
                 </div>
                 <div>
                   <Label htmlFor="deptStatus">Status</Label>
-                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
+                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))} >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -432,7 +412,7 @@ export default function Department() {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm">0 majors</span>
+                      <span className="text-sm">{majors.filter(m => m.department === department.id).length} majors</span>
                     </TableCell>
                     <TableCell>
                       <Badge variant={department.is_active ? "default" : "secondary"}>
@@ -508,13 +488,29 @@ export default function Department() {
 
                                   <Card>
                                     <CardHeader>
-                                      <CardTitle className="text-lg">Majors (0)</CardTitle>
+                                      <CardTitle className="text-lg">Majors ({majors.filter(m => m.department === selectedDepartment.id).length})</CardTitle>
                                     </CardHeader>
                                     <CardContent>
-                                      <div className="text-center py-8 text-muted-foreground">
-                                        Major list would be displayed here
-                                      </div>
-                                      <div className="flex gap-2">
+                                      {majors.filter(m => m.department === selectedDepartment.id).length > 0 ? (
+                                        <div className="space-y-2">
+                                          {majors.filter(m => m.department === selectedDepartment.id).map((major) => (
+                                            <div key={major.id} className="flex items-center justify-between p-2 border rounded">
+                                              <div>
+                                                <p className="font-medium">{major.name}</p>
+                                                <p className="text-sm text-muted-foreground">{major.code}</p>
+                                              </div>
+                                              <Badge variant={major.is_active ? "default" : "secondary"}>
+                                                {major.is_active ? "Active" : "Inactive"}
+                                              </Badge>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <div className="text-center py-8 text-muted-foreground">
+                                          No majors in this department
+                                        </div>
+                                      )}
+                                      <div className="flex gap-2 mt-4">
                                         <Button variant="outline" className="flex-1">
                                           <Plus className="mr-2 h-4 w-4" />
                                           Add Major
@@ -529,109 +525,192 @@ export default function Department() {
                               )}
                             </DrawerContent>
                           </Drawer>
-                          <Dialog>
+                          <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
                             <DialogTrigger asChild>
-                              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                              <DropdownMenuItem onSelect={(e) => {
+                                e.preventDefault();
+                                openEditDialog(department);
+                              }}>
                                 <Edit className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
                             </DialogTrigger>
-                            <DialogContent className="max-w-md">
-                              <DialogHeader>
-                                <DialogTitle>Edit Department</DialogTitle>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                              <DialogHeader className="space-y-3">
+                                <div className="flex items-center gap-3">
+                                  <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg">
+                                    <Building2 className="h-6 w-6 text-white" />
+                                  </div>
+                                  <div>
+                                    <DialogTitle className="text-xl font-semibold">Edit Department</DialogTitle>
+                                    <DialogDescription className="text-muted-foreground">
+                                      Update department information and settings
+                                    </DialogDescription>
+                                  </div>
+                                </div>
                               </DialogHeader>
-                              <div className="space-y-4">
-                                <div>
-                                  <Label htmlFor="editDeptName">Department Name *</Label>
-                                  <Input
-                                    id="editDeptName"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    placeholder="Enter department name"
-                                  />
+
+                              <div className="mt-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="editDeptName" className="text-sm font-medium text-foreground">
+                                      Department Name *
+                                    </Label>
+                                    <Input
+                                      id="editDeptName"
+                                      value={formData.name}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                      placeholder="Enter department name"
+                                      className="h-11 border-2 focus:border-blue-500 transition-colors"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="editDeptCode" className="text-sm font-medium text-foreground">
+                                      Department Code *
+                                    </Label>
+                                    <Input
+                                      id="editDeptCode"
+                                      value={formData.code}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                                      placeholder="e.g., CS, BA, ENG"
+                                      className="h-11 border-2 focus:border-blue-500 transition-colors font-mono"
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <Label htmlFor="editDeptCode">Department Code *</Label>
-                                  <Input
-                                    id="editDeptCode"
-                                    value={formData.code}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                                    placeholder="Enter department code (e.g., CS, BA)"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="editDeptDescription">Description</Label>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="editDeptDescription" className="text-sm font-medium text-foreground">
+                                    Description
+                                  </Label>
                                   <Textarea
                                     id="editDeptDescription"
                                     value={formData.description}
                                     onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                                    placeholder="Enter department description"
+                                    placeholder="Enter department description..."
+                                    className="min-h-[100px] border-2 focus:border-blue-500 transition-colors resize-none"
                                   />
                                 </div>
-                                <div>
-                                  <Label htmlFor="editDeptBuilding">Building Location</Label>
-                                  <Input
-                                    id="editDeptBuilding"
-                                    value={formData.building_location}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, building_location: e.target.value }))}
-                                    placeholder="Enter building location"
-                                  />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                  <div className="space-y-2">
+                                    <Label htmlFor="editDeptBuilding" className="text-sm font-medium text-foreground">
+                                      Building Location
+                                    </Label>
+                                    <Input
+                                      id="editDeptBuilding"
+                                      value={formData.building_location}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, building_location: e.target.value }))}
+                                      placeholder="e.g., Building A, Room 101"
+                                      className="h-11 border-2 focus:border-blue-500 transition-colors"
+                                    />
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <Label htmlFor="editDeptEmail" className="text-sm font-medium text-foreground">
+                                      Contact Email
+                                    </Label>
+                                    <Input
+                                      id="editDeptEmail"
+                                      type="email"
+                                      value={formData.contact_email}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
+                                      placeholder="contact@department.edu"
+                                      className="h-11 border-2 focus:border-blue-500 transition-colors"
+                                    />
+                                  </div>
                                 </div>
-                                <div>
-                                  <Label htmlFor="editDeptHead">Head of Department</Label>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="editDeptHead" className="text-sm font-medium text-foreground">
+                                    Head of Department
+                                  </Label>
                                   <Select value={formData.head_of_department} onValueChange={(value) => setFormData(prev => ({ ...prev, head_of_department: value }))}>
-                                    <SelectTrigger>
+                                    <SelectTrigger className="h-11 border-2 focus:border-blue-500 transition-colors">
                                       <SelectValue placeholder="Select head of department" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="none">None</SelectItem>
+                                      <SelectItem value="none">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-4 h-4 rounded-full border-2 border-dashed border-muted-foreground"></div>
+                                          None
+                                        </div>
+                                      </SelectItem>
                                       {staffProfiles.length > 0 ? (
                                         staffProfiles.map((staff) => (
                                           <SelectItem key={staff.id} value={staff.id.toString()}>
-                                            {staff.full_name} ({staff.position})
+                                            <div className="flex items-center gap-2">
+                                              <Avatar className="h-6 w-6">
+                                                <AvatarImage src={staff.photo} />
+                                                <AvatarFallback className="text-xs">
+                                                  {staff.full_name.split(' ').map(n => n[0]).join('')}
+                                                </AvatarFallback>
+                                              </Avatar>
+                                              <div>
+                                                <div className="font-medium">{staff.full_name}</div>
+                                                <div className="text-xs text-muted-foreground">{staff.position}</div>
+                                              </div>
+                                            </div>
                                           </SelectItem>
                                         ))
                                       ) : (
                                         <SelectItem value="none" disabled>
-                                          No staff members available
+                                          <div className="flex items-center gap-2">
+                                            <div className="w-4 h-4 rounded-full bg-muted"></div>
+                                            No staff members available
+                                          </div>
                                         </SelectItem>
                                       )}
                                     </SelectContent>
                                   </Select>
                                 </div>
-                                <div>
-                                  <Label htmlFor="editDeptEmail">Contact Email</Label>
-                                  <Input
-                                    id="editDeptEmail"
-                                    type="email"
-                                    value={formData.contact_email}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
-                                    placeholder="Enter contact email"
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="editDeptStatus">Status</Label>
-                                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value) => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
-                                    <SelectTrigger>
+
+                                <div className="space-y-2">
+                                  <Label htmlFor="editDeptStatus" className="text-sm font-medium text-foreground">
+                                    Status
+                                  </Label>
+                                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
+                                    <SelectTrigger className="h-11 border-2 focus:border-blue-500 transition-colors">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="active">Active</SelectItem>
-                                      <SelectItem value="inactive">Inactive</SelectItem>
+                                      <SelectItem value="active">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                          Active
+                                        </div>
+                                      </SelectItem>
+                                      <SelectItem value="inactive">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                          Inactive
+                                        </div>
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
-                                <div className="flex justify-end gap-2">
-                                  <Button variant="outline" onClick={() => {
+                              </div>
+
+                              <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+                                <Button
+                                  variant="outline"
+                                  onClick={() => {
                                     resetForm();
                                     setEditingDepartment(null);
-                                  }}>
-                                    Cancel
-                                  </Button>
-                                  <Button onClick={handleEditDepartment} disabled={!formData.name.trim() || !formData.code.trim()}>
-                                    Update Department
-                                  </Button>
-                                </div>
+                                    setIsEditDialogOpen(false);
+                                  }}
+                                  className="px-6 h-11 border-2 hover:bg-muted/50 transition-colors"
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  onClick={handleEditDepartment}
+                                  disabled={!formData.name.trim() || !formData.code.trim()}
+                                  className="px-6 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                                >
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Update Department
+                                </Button>
                               </div>
                             </DialogContent>
                           </Dialog>

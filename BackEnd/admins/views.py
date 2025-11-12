@@ -19,19 +19,19 @@ class DepartmentViewSet(viewsets.ModelViewSet):
     serializer_class = DepartmentSerializer
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required('Admin.view_department', raise_exception=True))
+    @method_decorator(permission_required('admins.view_department', raise_exception=True))
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.add_department', raise_exception=True))
+    @method_decorator(permission_required('admins.add_department', raise_exception=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.change_department', raise_exception=True))
+    @method_decorator(permission_required('admins.change_department', raise_exception=True))
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.delete_department', raise_exception=True))
+    @method_decorator(permission_required('admins.delete_department', raise_exception=True))
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -41,19 +41,19 @@ class MajorViewSet(viewsets.ModelViewSet):
     serializer_class = MajorSerializer
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required('Admin.view_major', raise_exception=True))
+    @method_decorator(permission_required('admins.view_major', raise_exception=True))
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.add_major', raise_exception=True))
+    @method_decorator(permission_required('admins.add_major', raise_exception=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.change_major', raise_exception=True))
+    @method_decorator(permission_required('admins.change_major', raise_exception=True))
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.delete_major', raise_exception=True))
+    @method_decorator(permission_required('admins.delete_major', raise_exception=True))
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -63,19 +63,19 @@ class ClassViewSet(viewsets.ModelViewSet):
     serializer_class = ClassSerializer
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required('Admin.view_class', raise_exception=True))
+    @method_decorator(permission_required('admins.view_class', raise_exception=True))
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.add_class', raise_exception=True))
+    @method_decorator(permission_required('admins.add_class', raise_exception=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.change_class', raise_exception=True))
+    @method_decorator(permission_required('admins.change_class', raise_exception=True))
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.delete_class', raise_exception=True))
+    @method_decorator(permission_required('admins.delete_class', raise_exception=True))
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -85,19 +85,19 @@ class SubjectViewSet(viewsets.ModelViewSet):
     serializer_class = SubjectSerializer
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required('Admin.view_subject', raise_exception=True))
+    @method_decorator(permission_required('admins.view_subject', raise_exception=True))
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.add_subject', raise_exception=True))
+    @method_decorator(permission_required('admins.add_subject', raise_exception=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.change_subject', raise_exception=True))
+    @method_decorator(permission_required('admins.change_subject', raise_exception=True))
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.delete_subject', raise_exception=True))
+    @method_decorator(permission_required('admins.delete_subject', raise_exception=True))
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -107,19 +107,19 @@ class SystemSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = SystemSettingsSerializer
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required('Admin.view_systemsettings', raise_exception=True))
+    @method_decorator(permission_required('admins.view_systemsettings', raise_exception=True))
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.add_systemsettings', raise_exception=True))
+    @method_decorator(permission_required('admins.add_systemsettings', raise_exception=True))
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.change_systemsettings', raise_exception=True))
+    @method_decorator(permission_required('admins.change_systemsettings', raise_exception=True))
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @method_decorator(permission_required('Admin.delete_systemsettings', raise_exception=True))
+    @method_decorator(permission_required('admins.delete_systemsettings', raise_exception=True))
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
@@ -129,7 +129,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated]
 
-    @method_decorator(permission_required('Admin.view_auditlog', raise_exception=True))
+    @method_decorator(permission_required('admins.view_auditlog', raise_exception=True))
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
