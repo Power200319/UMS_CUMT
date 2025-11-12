@@ -7,10 +7,10 @@ from django.utils.decorators import method_decorator
 from django.db.models import Count, Q
 from django.db.models.functions import TruncMonth
 from datetime import datetime, timedelta
-from .models import Department, Major, Class, Subject, SystemSettings, AuditLog
+from .models import Department, Major, Class, Course, Subject, SystemSettings, AuditLog
 from .serializers import (
     DepartmentSerializer, MajorSerializer, ClassSerializer,
-    SubjectSerializer, SystemSettingsSerializer, AuditLogSerializer
+    CourseSerializer, SubjectSerializer, SystemSettingsSerializer, AuditLogSerializer
 )
 
 
@@ -76,6 +76,28 @@ class ClassViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
     @method_decorator(permission_required('admins.delete_class', raise_exception=True))
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
+
+class CourseViewSet(viewsets.ModelViewSet):
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+    permission_classes = [IsAuthenticated]
+
+    @method_decorator(permission_required('admins.view_subject', raise_exception=True))
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @method_decorator(permission_required('admins.add_subject', raise_exception=True))
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @method_decorator(permission_required('admins.change_subject', raise_exception=True))
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @method_decorator(permission_required('admins.delete_subject', raise_exception=True))
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 

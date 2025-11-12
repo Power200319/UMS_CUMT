@@ -70,22 +70,6 @@ const queryClient = new QueryClient();
 const AppContent = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If not authenticated, show login
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
   // Role-based redirection
   const getRoleBasedRedirect = () => {
     if (!user?.roles || user.roles.length === 0) return '/admin';
@@ -114,6 +98,22 @@ const AppContent = () => {
       }
     }
   }, [user, isLoading]);
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If not authenticated, show login
+  if (!isAuthenticated) {
+    return <Login />;
+  }
 
   return (
     <Routes>
@@ -223,7 +223,7 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AppContent />
         </BrowserRouter>
       </TooltipProvider>

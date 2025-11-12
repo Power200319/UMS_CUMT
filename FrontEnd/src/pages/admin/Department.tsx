@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, MoreVertical, Building2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, MoreVertical, Building2, Eye, FileText } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Loader } from "@/components/common/Loader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -47,6 +47,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
 import { API_ENDPOINTS, get, post, put, del } from "@/api/config";
 import type { Department, StaffProfile } from "@/types";
+import { Tabs } from "@radix-ui/react-tabs";
+import { TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Department() {
   const [loading, setLoading] = useState(true);
@@ -233,107 +235,221 @@ export default function Department() {
         actions={
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Department
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Department</DialogTitle>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg">
+                    <Building2 className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-xl font-semibold">Create New Department</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                      Add a new faculty department to the system
+                    </DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="deptName">Department Name *</Label>
-                  <Input
-                    id="deptName"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter department name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deptCode">Department Code *</Label>
-                  <Input
-                    id="deptCode"
-                    value={formData.code}
-                    onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                    placeholder="Enter department code (e.g., CS, BA)"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deptDescription">Description</Label>
-                  <Textarea
-                    id="deptDescription"
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Enter department description"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deptBuilding">Building Location</Label>
-                  <Input
-                    id="deptBuilding"
-                    value={formData.building_location}
-                    onChange={(e) => setFormData(prev => ({ ...prev, building_location: e.target.value }))}
-                    placeholder="Enter building location"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deptHead">Head of Department</Label>
-                  <Select value={formData.head_of_department} onValueChange={(value) => setFormData(prev => ({ ...prev, head_of_department: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select head of department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {staffProfiles.length > 0 ? (
-                        staffProfiles.map((staff) => (
-                          <SelectItem key={staff.id} value={staff.id.toString()}>
-                            {staff.full_name} ({staff.position})
+
+              <div className="mt-6">
+                <Tabs defaultValue="basic" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+                    <TabsTrigger value="basic" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Basic Info
+                    </TabsTrigger>
+                    <TabsTrigger value="contact" className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Contact & Location
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="basic" className="space-y-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="deptName" className="text-sm font-medium text-foreground">
+                          Department Name *
+                        </Label>
+                        <Input
+                          id="deptName"
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="Enter department name"
+                          className="h-11 border-2 focus:border-purple-500 transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="deptCode" className="text-sm font-medium text-foreground">
+                          Department Code *
+                        </Label>
+                        <Input
+                          id="deptCode"
+                          value={formData.code}
+                          onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                          placeholder="e.g., CS, BA, ENG"
+                          className="h-11 border-2 focus:border-purple-500 transition-colors font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="deptDescription" className="text-sm font-medium text-foreground">
+                        Description
+                      </Label>
+                      <Textarea
+                        id="deptDescription"
+                        value={formData.description}
+                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                        placeholder="Enter department description..."
+                        className="min-h-[100px] border-2 focus:border-purple-500 transition-colors resize-none"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="deptHead" className="text-sm font-medium text-foreground">
+                        Head of Department
+                      </Label>
+                      <Select value={formData.head_of_department} onValueChange={(value) => setFormData(prev => ({ ...prev, head_of_department: value }))}>
+                        <SelectTrigger className="h-11 border-2 focus:border-purple-500 transition-colors">
+                          <SelectValue placeholder="Select head of department" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 rounded-full border-2 border-dashed border-muted-foreground"></div>
+                              None
+                            </div>
                           </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="none" disabled>
-                          No staff members available
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="deptEmail">Contact Email</Label>
-                  <Input
-                    id="deptEmail"
-                    type="email"
-                    value={formData.contact_email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
-                    placeholder="Enter contact email"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deptStatus">Status</Label>
-                  <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))} >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => {
+                          {staffProfiles.length > 0 ? (
+                            staffProfiles.map((staff) => (
+                              <SelectItem key={staff.id} value={staff.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6">
+                                    <AvatarImage src={staff.photo} />
+                                    <AvatarFallback className="text-xs">
+                                      {staff.full_name.split(' ').map(n => n[0]).join('')}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <div className="font-medium">{staff.full_name}</div>
+                                    <div className="text-xs text-muted-foreground">{staff.position}</div>
+                                  </div>
+                                </div>
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="none" disabled>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 rounded-full bg-muted"></div>
+                                No staff members available
+                              </div>
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="deptStatus" className="text-sm font-medium text-foreground">
+                        Status
+                      </Label>
+                      <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
+                        <SelectTrigger className="h-11 border-2 focus:border-purple-500 transition-colors">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              Active
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="inactive">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              Inactive
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="contact" className="space-y-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="deptBuilding" className="text-sm font-medium text-foreground">
+                          Building Location
+                        </Label>
+                        <Input
+                          id="deptBuilding"
+                          value={formData.building_location}
+                          onChange={(e) => setFormData(prev => ({ ...prev, building_location: e.target.value }))}
+                          placeholder="e.g., Building A, Room 101"
+                          className="h-11 border-2 focus:border-purple-500 transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="deptEmail" className="text-sm font-medium text-foreground">
+                          Contact Email
+                        </Label>
+                        <Input
+                          id="deptEmail"
+                          type="email"
+                          value={formData.contact_email}
+                          onChange={(e) => setFormData(prev => ({ ...prev, contact_email: e.target.value }))}
+                          placeholder="contact@department.edu"
+                          className="h-11 border-2 focus:border-purple-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 p-6 rounded-lg border border-purple-200 dark:border-purple-800">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                          <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-purple-900 dark:text-purple-100">Department Setup Tips</h4>
+                          <p className="text-sm text-purple-700 dark:text-purple-300">Ensure all information is accurate for proper system integration</p>
+                        </div>
+                      </div>
+                      <ul className="text-sm text-purple-800 dark:text-purple-200 space-y-1">
+                        <li>• Use unique department codes (e.g., CS for Computer Science)</li>
+                        <li>• Building location helps with scheduling and navigation</li>
+                        <li>• Contact email is used for official communications</li>
+                        <li>• Head of department can be assigned later if needed</li>
+                      </ul>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
                     setIsCreateDialogOpen(false);
                     resetForm();
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateDepartment} disabled={!formData.name.trim() || !formData.code.trim()}>
-                    Create Department
-                  </Button>
-                </div>
+                  }}
+                  className="px-6 h-11 border-2 hover:bg-muted/50 transition-colors"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateDepartment}
+                  disabled={!formData.name.trim() || !formData.code.trim()}
+                  className="px-6 h-11 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Department
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

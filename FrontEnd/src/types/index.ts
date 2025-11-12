@@ -133,6 +133,26 @@ export interface Subject {
   updated_at: string;
 }
 
+export type SemesterValue = "1" | "2";
+
+export interface Course {
+  id: number;
+  code: string;
+  title: string;
+  description?: string;
+  credits: number;
+  department_id: number;
+  department_code: string;
+  major?: number;
+  major_code?: string;
+  semester: SemesterValue;
+  prerequisites: Course[];
+  prerequisiteIds: number[];
+  status: "active" | "inactive";
+  created_at: string;
+  updated_at: string;
+}
+
 // Core Models
 export interface SystemSettings {
   id: number;

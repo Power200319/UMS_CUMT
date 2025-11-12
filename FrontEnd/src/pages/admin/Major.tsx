@@ -278,113 +278,224 @@ export default function Major() {
             </Dialog>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Major
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Create New Major</DialogTitle>
-                  <DialogDescription>Add a new major to the system.</DialogDescription>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-green-500 to-blue-600 rounded-lg">
+                      <GraduationCap className="h-6 w-6 text-white" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-xl font-semibold">Create New Major</DialogTitle>
+                      <DialogDescription className="text-muted-foreground">
+                        Add a new academic major to the system
+                      </DialogDescription>
+                    </div>
+                  </div>
                 </DialogHeader>
-                <Tabs defaultValue="basic" className="w-full">
-                   <TabsList className="grid w-full grid-cols-1">
-                     <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                   </TabsList>
-                  <TabsContent value="basic" className="space-y-4">
-                    <div>
-                      <Label htmlFor="majorName">Major Name *</Label>
-                      <Input
-                        id="majorName"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="Enter major name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="majorCode">Major Code *</Label>
-                      <Input
-                        id="majorCode"
-                        value={formData.code}
-                        onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
-                        placeholder="Enter major code (e.g., CS, SE)"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="department">Department *</Label>
-                      <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {departments.map(dept => (
-                            <SelectItem key={dept.id} value={dept.id.toString()}>
-                              {dept.name} ({dept.code})
+
+                <div className="mt-6">
+                  <Tabs defaultValue="basic" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+                      <TabsTrigger value="basic" className="flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Basic Info
+                      </TabsTrigger>
+                      <TabsTrigger value="advanced" className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Advanced
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="basic" className="space-y-6 mt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="majorName" className="text-sm font-medium text-foreground">
+                            Major Name *
+                          </Label>
+                          <Input
+                            id="majorName"
+                            value={formData.name}
+                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            placeholder="Enter major name"
+                            className="h-11 border-2 focus:border-green-500 transition-colors"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="majorCode" className="text-sm font-medium text-foreground">
+                            Major Code *
+                          </Label>
+                          <Input
+                            id="majorCode"
+                            value={formData.code}
+                            onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase() }))}
+                            placeholder="e.g., CS, SE, IT"
+                            className="h-11 border-2 focus:border-green-500 transition-colors font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="department" className="text-sm font-medium text-foreground">
+                          Department *
+                        </Label>
+                        <Select value={formData.department} onValueChange={(value) => setFormData(prev => ({ ...prev, department: value }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-green-500 transition-colors">
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {departments.map(dept => (
+                              <SelectItem key={dept.id} value={dept.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                                  {dept.name} ({dept.code})
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="majorDescription" className="text-sm font-medium text-foreground">
+                          Description
+                        </Label>
+                        <Textarea
+                          id="majorDescription"
+                          value={formData.description}
+                          onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Enter major description..."
+                          className="min-h-[100px] border-2 focus:border-green-500 transition-colors resize-none"
+                        />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="advanced" className="space-y-6 mt-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label htmlFor="degreeType" className="text-sm font-medium text-foreground">
+                            Degree Type
+                          </Label>
+                          <Select value={formData.degree_type} onValueChange={(value) => setFormData(prev => ({ ...prev, degree_type: value }))}>
+                            <SelectTrigger className="h-11 border-2 focus:border-green-500 transition-colors">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Bachelor">
+                                <div className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4 text-blue-500" />
+                                  Bachelor
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Master">
+                                <div className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4 text-green-500" />
+                                  Master
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="Doctorate">
+                                <div className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4 text-purple-500" />
+                                  Doctorate
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="duration" className="text-sm font-medium text-foreground">
+                            Duration (years)
+                          </Label>
+                          <Input
+                            id="duration"
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={formData.duration_years}
+                            onChange={(e) => setFormData(prev => ({ ...prev, duration_years: parseInt(e.target.value) || 4 }))}
+                            className="h-11 border-2 focus:border-green-500 transition-colors"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="departmentHead" className="text-sm font-medium text-foreground">
+                          Department Head
+                        </Label>
+                        <Select value={formData.department_head} onValueChange={(value) => setFormData(prev => ({ ...prev, department_head: value }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-green-500 transition-colors">
+                            <SelectValue placeholder="Select department head" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">
+                              <div className="flex items-center gap-2">
+                                <User className="h-4 w-4 text-muted-foreground" />
+                                None
+                              </div>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="degreeType">Degree Type</Label>
-                      <Select value={formData.degree_type} onValueChange={(value) => setFormData(prev => ({ ...prev, degree_type: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Bachelor">Bachelor</SelectItem>
-                          <SelectItem value="Master">Master</SelectItem>
-                          <SelectItem value="Doctorate">Doctorate</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="duration">Duration (years)</Label>
-                      <Input
-                        id="duration"
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={formData.duration_years}
-                        onChange={(e) => setFormData(prev => ({ ...prev, duration_years: parseInt(e.target.value) || 4 }))}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="departmentHead">Department Head</Label>
-                      <Select value={formData.department_head} onValueChange={(value) => setFormData(prev => ({ ...prev, department_head: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select department head" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {teacherProfiles.map(teacher => (
-                            <SelectItem key={teacher.id} value={teacher.id.toString()}>
-                              {teacher.full_name}
+                            {teacherProfiles.map(teacher => (
+                              <SelectItem key={teacher.id} value={teacher.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4 text-blue-500" />
+                                  {teacher.full_name}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="majorStatus" className="text-sm font-medium text-foreground">
+                          Status
+                        </Label>
+                        <Select value={formData.is_active ? "active" : "inactive"} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, is_active: value === "active" }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-green-500 transition-colors">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                Active
+                              </div>
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="majorDescription">Description</Label>
-                      <Textarea
-                        id="majorDescription"
-                        value={formData.description}
-                        onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                        placeholder="Enter major description"
-                      />
-                    </div>
-                  </TabsContent>
-                </Tabs>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => {
-                    setIsCreateDialogOpen(false);
-                    resetForm();
-                  }}>
+                            <SelectItem value="inactive">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                                Inactive
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+
+                <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIsCreateDialogOpen(false);
+                      resetForm();
+                    }}
+                    className="px-6 h-11 border-2 hover:bg-muted/50 transition-colors"
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleCreateMajor} disabled={!formData.name.trim() || !formData.code.trim() || !formData.department}>
+                  <Button
+                    onClick={handleCreateMajor}
+                    disabled={!formData.name.trim() || !formData.code.trim() || !formData.department}
+                    className="px-6 h-11 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
                     Create Major
                   </Button>
                 </div>

@@ -59,6 +59,7 @@ export const API_ENDPOINTS = {
     DEPARTMENTS: `${API_BASE_URL}/admin/departments/`,
     MAJORS: `${API_BASE_URL}/admin/majors/`,
     CLASSES: `${API_BASE_URL}/admin/classes/`,
+    COURSES: `${API_BASE_URL}/admin/courses/`,
     SUBJECTS: `${API_BASE_URL}/admin/subjects/`,
     SYSTEM_SETTINGS: `${API_BASE_URL}/admin/system-settings/`,
     AUDIT_LOGS: `${API_BASE_URL}/admin/audit-logs/`,

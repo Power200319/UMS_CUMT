@@ -74,7 +74,7 @@ class SubjectAdmin(admin.ModelAdmin):
             'fields': ('name', 'code', 'department', 'description')
         }),
         ('Academic Details', {
-            'fields': ('credits', 'semester_offered', 'year_level', 'majors')
+            'fields': ('credits', 'semester_offered', 'year_level', 'major')
         }),
         ('Status', {
             'fields': ('is_active',)

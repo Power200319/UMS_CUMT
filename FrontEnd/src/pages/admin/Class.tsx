@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Search, Edit, Trash2, MoreVertical, School, Users, User, Calendar, Filter, UserPlus, AlertTriangle } from "lucide-react";
+import { Plus, Search, Edit, Trash2, MoreVertical, School, Users, User, Calendar, Filter, UserPlus, AlertTriangle, FileText, GraduationCap } from "lucide-react";
 import { PageHeader } from "@/components/common/PageHeader";
 import { Loader } from "@/components/common/Loader";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -24,6 +24,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -45,6 +46,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { API_ENDPOINTS, get, post, put, del } from "@/api/config";
 import type { Class, Major, User as UserType, ClassShift, Semester } from "@/types";
+import { Tabs, TabsContent, TabsTrigger } from "@/components/ui/tabs";
+import { TabsList } from "@radix-ui/react-tabs";
 
 export default function Class() {
   const [loading, setLoading] = useState(true);
@@ -125,6 +128,7 @@ export default function Class() {
         room_number: formData.roomNumber,
         class_teacher: formData.classTeacherId ? parseInt(formData.classTeacherId) : null,
         is_active: formData.status === 'active',
+        current_students: 0,
       });
       setClasses(prev => [...prev, newClass]);
       resetForm();
@@ -148,6 +152,7 @@ export default function Class() {
         room_number: formData.roomNumber,
         class_teacher: formData.classTeacherId ? parseInt(formData.classTeacherId) : null,
         is_active: formData.status === 'active',
+        current_students: editingClass.current_students || 0,
       });
       setClasses(prev => prev.map(cls =>
         cls.id === editingClass.id ? updatedClass : cls
@@ -247,141 +252,288 @@ export default function Class() {
         actions={
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-200">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Class
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Create New Class</DialogTitle>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-lg">
+                    <School className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-xl font-semibold">Create New Class</DialogTitle>
+                    <DialogDescription className="text-muted-foreground">
+                      Set up a new class group for student enrollment
+                    </DialogDescription>
+                  </div>
+                </div>
               </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="className">Class Name *</Label>
-                  <Input
-                    id="className"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter class name"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="major">Major *</Label>
-                  <Select value={formData.majorId} onValueChange={(value) => setFormData(prev => ({ ...prev, majorId: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select major" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {majors.map(major => (
-                        <SelectItem key={major.id} value={major.id.toString()}>
-                          {major.name} ({major.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="academicYear">Academic Year</Label>
-                    <Select value={formData.academicYear} onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="Select Academic Year" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {generateAcademicYears().map((year) => (
-                          <SelectItem key={year} value={year}>
-                            {year}
+
+              <div className="mt-6">
+                <Tabs defaultValue="basic" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 bg-muted/50">
+                    <TabsTrigger value="basic" className="flex items-center gap-2">
+                      <FileText className="h-4 w-4" />
+                      Basic Info
+                    </TabsTrigger>
+                    <TabsTrigger value="schedule" className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      Schedule & Capacity
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="basic" className="space-y-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="className" className="text-sm font-medium text-foreground">
+                          Class Name *
+                        </Label>
+                        <Input
+                          id="className"
+                          value={formData.name}
+                          onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="e.g., CS101-A, ENG202-B"
+                          className="h-11 border-2 focus:border-teal-500 transition-colors"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="major" className="text-sm font-medium text-foreground">
+                          Major *
+                        </Label>
+                        <Select value={formData.majorId} onValueChange={(value) => setFormData(prev => ({ ...prev, majorId: value }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-teal-500 transition-colors">
+                            <SelectValue placeholder="Select major" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {majors.map(major => (
+                              <SelectItem key={major.id} value={major.id.toString()}>
+                                <div className="flex items-center gap-2">
+                                  <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                                  {major.name} ({major.code})
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="academicYear" className="text-sm font-medium text-foreground">
+                          Academic Year
+                        </Label>
+                        <Select value={formData.academicYear} onValueChange={(value) => setFormData(prev => ({ ...prev, academicYear: value }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-teal-500 transition-colors">
+                            <SelectValue placeholder="Select Academic Year" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {generateAcademicYears().map((year) => (
+                              <SelectItem key={year} value={year}>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  {year}
+                                </div>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="semester" className="text-sm font-medium text-foreground">
+                          Semester
+                        </Label>
+                        <Select value={formData.semester} onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-teal-500 transition-colors">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                Semester 1
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="2">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                Semester 2
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="classTeacher" className="text-sm font-medium text-foreground">
+                        Class Teacher
+                      </Label>
+                      <Select value={formData.classTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, classTeacherId: value }))}>
+                        <SelectTrigger className="h-11 border-2 focus:border-teal-500 transition-colors">
+                          <SelectValue placeholder="Select class teacher" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">
+                            <div className="flex items-center gap-2">
+                              <div className="w-4 h-4 rounded-full border-2 border-dashed border-muted-foreground"></div>
+                              None (Assign later)
+                            </div>
                           </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="semester">Semester</Label>
-                    <Select value={formData.semester} onValueChange={(value) => setFormData(prev => ({ ...prev, semester: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">Semester 1</SelectItem>
-                        <SelectItem value="2">Semester 2</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="shift">Shift</Label>
-                    <Select value={formData.shift} onValueChange={(value: ClassShift) => setFormData(prev => ({ ...prev, shift: value }))}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="morning">Morning</SelectItem>
-                        <SelectItem value="afternoon">Afternoon</SelectItem>
-                        <SelectItem value="evening">Evening</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="capacity">Capacity</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      min="1"
-                      value={formData.capacity}
-                      onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) || 50 }))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="roomNumber">Room Number</Label>
-                  <Input
-                    id="roomNumber"
-                    value={formData.roomNumber}
-                    onChange={(e) => setFormData(prev => ({ ...prev, roomNumber: e.target.value }))}
-                    placeholder="Enter room number"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="classTeacher">Class Teacher</Label>
-                  <Select value={formData.classTeacherId} onValueChange={(value) => setFormData(prev => ({ ...prev, classTeacherId: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select class teacher" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.filter(user => user.is_staff).map(user => (
-                        <SelectItem key={user.id} value={user.id.toString()}>
-                          {user.first_name} {user.last_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="classStatus">Status</Label>
-                  <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, status: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => {
+                          {users.filter(user => user.is_staff).map(user => (
+                            <SelectItem key={user.id} value={user.id.toString()}>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-6 w-6">
+                                  <AvatarImage src="" />
+                                  <AvatarFallback className="text-xs">
+                                    {user.first_name?.[0]}{user.last_name?.[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{user.first_name} {user.last_name}</div>
+                                  <div className="text-xs text-muted-foreground">Staff</div>
+                                </div>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="classStatus" className="text-sm font-medium text-foreground">
+                        Status
+                      </Label>
+                      <Select value={formData.status} onValueChange={(value: "active" | "inactive") => setFormData(prev => ({ ...prev, status: value }))}>
+                        <SelectTrigger className="h-11 border-2 focus:border-teal-500 transition-colors">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="active">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                              Active
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="inactive">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+                              Inactive
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="schedule" className="space-y-6 mt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="shift" className="text-sm font-medium text-foreground">
+                          Shift
+                        </Label>
+                        <Select value={formData.shift} onValueChange={(value: ClassShift) => setFormData(prev => ({ ...prev, shift: value }))}>
+                          <SelectTrigger className="h-11 border-2 focus:border-teal-500 transition-colors">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="morning">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                                Morning
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="afternoon">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-orange-400 rounded-full"></div>
+                                Afternoon
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="evening">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-indigo-400 rounded-full"></div>
+                                Evening
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="capacity" className="text-sm font-medium text-foreground">
+                          Capacity
+                        </Label>
+                        <Input
+                          id="capacity"
+                          type="number"
+                          min="1"
+                          max="200"
+                          value={formData.capacity}
+                          onChange={(e) => setFormData(prev => ({ ...prev, capacity: parseInt(e.target.value) || 50 }))}
+                          placeholder="50"
+                          className="h-11 border-2 focus:border-teal-500 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="roomNumber" className="text-sm font-medium text-foreground">
+                        Room Number
+                      </Label>
+                      <Input
+                        id="roomNumber"
+                        value={formData.roomNumber}
+                        onChange={(e) => setFormData(prev => ({ ...prev, roomNumber: e.target.value }))}
+                        placeholder="e.g., A101, B205, LAB-3"
+                        className="h-11 border-2 focus:border-teal-500 transition-colors font-mono"
+                      />
+                    </div>
+
+                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 dark:from-teal-950/20 dark:to-cyan-950/20 p-6 rounded-lg border border-teal-200 dark:border-teal-800">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-teal-100 dark:bg-teal-900 rounded-lg">
+                          <School className="h-5 w-5 text-teal-600 dark:text-teal-400" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-teal-900 dark:text-teal-100">Class Setup Tips</h4>
+                          <p className="text-sm text-teal-700 dark:text-teal-300">Ensure optimal class configuration</p>
+                        </div>
+                      </div>
+                      <ul className="text-sm text-teal-800 dark:text-teal-200 space-y-1">
+                        <li>• Use descriptive class names (e.g., CS101-A for Computer Science 101 Section A)</li>
+                        <li>• Set realistic capacity based on room size and resources</li>
+                        <li>• Room numbers help with scheduling and student navigation</li>
+                        <li>• Class teacher can be assigned later if needed</li>
+                      </ul>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => {
                     setIsCreateDialogOpen(false);
                     resetForm();
-                  }}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleCreateClass} disabled={!formData.name.trim() || !formData.majorId}>
-                    Create Class
-                  </Button>
-                </div>
+                  }}
+                  className="px-6 h-11 border-2 hover:bg-muted/50 transition-colors"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateClass}
+                  disabled={!formData.name.trim() || !formData.majorId}
+                  className="px-6 h-11 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Class
+                </Button>
               </div>
             </DialogContent>
           </Dialog>

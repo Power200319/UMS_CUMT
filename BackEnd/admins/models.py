@@ -48,6 +48,23 @@ class Class(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.academic_year}"
+    
+class Course(models.Model):
+    code = models.CharField(max_length=20, unique=True)
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True)
+    credit = models.PositiveIntegerField(default=3)
+
+    major = models.ForeignKey(Major, on_delete=models.SET_NULL, null=True, blank=True, related_name='courses')
+    semester = models.CharField(max_length=20, choices=[('1', '1'), ('2', '2')])
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.code} - {self.name}"
+
 
 class Subject(models.Model):
     name = models.CharField(max_length=100)
@@ -57,9 +74,10 @@ class Subject(models.Model):
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    majors = models.ManyToManyField(Major)
+    major = models.ForeignKey(Major, on_delete=models.SET_NULL, null=True, blank=True)
+    prerequisites = models.ManyToManyField('self', blank=True, symmetrical=False, related_name='prerequisite_for')
     semester_offered = models.CharField(max_length=50)
-    year_level = models.IntegerField()
+    year_level = models.IntegerField(default=1)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
